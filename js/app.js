@@ -87,7 +87,7 @@
       if (!text || !chatBody) return;
       var u = document.createElement('div');
       u.className = 'msg user-msg';
-      u.innerHTML = '<div class="m-ava">MR</div><div class="m-bubble">' + text + '</div>';
+      u.innerHTML = '<div class="m-ava">MW</div><div class="m-bubble">' + text + '</div>';
       chatBody.appendChild(u);
       chatBody.scrollTop = chatBody.scrollHeight;
       setTimeout(function () {

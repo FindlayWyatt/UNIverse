@@ -52,7 +52,7 @@ def rail(active):
         cls = 'rail-btn active' if key == active else 'rail-btn'
         btns.append('<a class="%s" href="%s"><span class="tip">%s</span>%s</a>' % (cls, href, label, ICONS[key]))
     btns.append('<div class="rail-spacer"></div>')
-    btns.append('<a class="rail-avatar" href="profile.html">MR</a>')
+    btns.append('<a class="rail-avatar" href="profile.html">MW</a>')
     return '<nav class="rail">' + ''.join(btns) + '</nav>'
 
 def topbar():
@@ -397,8 +397,8 @@ def build_profile():
                      '<div style="color:var(--muted);font-size:.78rem">%s</div></div></div>' % (cls, box, txt, sub))
     left = ('<div class="feed-col">'
             '<div class="page-head" style="display:flex;align-items:center;gap:16px">'
-            '<div class="rail-avatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">MR</div>'
-            '<div><h1 style="margin-bottom:4px">Murray R.</h1>'
+            '<div class="rail-avatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">MW</div>'
+            '<div><h1 style="margin-bottom:4px">Murray Wyatt</h1>'
             '<div class="sub">1st year · Computer Science · Cardiff University</div></div></div>'
             + stat_strip +
             '<div class="widget"><div class="widget-head"><h3>Your uni journey</h3>'
@@ -432,7 +432,7 @@ def build_ai():
             '<div class="chat-body">'
             '<div class="msg ai-msg"><div class="m-ava">UV</div>'
             '<div class="m-bubble">Hey Murray 👋 I\'m your Cardiff guide. Tell me what you want to get out of uni — a career direction, new people, something to do this weekend — and I\'ll point you at the events, societies and opportunities that get you there.</div></div>'
-            '<div class="msg user-msg"><div class="m-ava">MR</div>'
+            '<div class="msg user-msg"><div class="m-ava">MW</div>'
             '<div class="m-bubble">I want to break into tech but I\'m a shy first year and don\'t know where to start.</div></div>'
             '<div class="msg ai-msg"><div class="m-ava">UV</div>'
             '<div class="m-bubble">Totally normal — loads of people feel that in first year. The trick is small, low-pressure steps. Here\'s where I\'d start, all beginner-friendly:'
