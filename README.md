@@ -12,6 +12,7 @@ This is a **static front-end prototype** — no backend, no real accounts. It's 
 | `events.html` | All events, grid + filters |
 | `opportunities.html` | Internships / placements / jobs (links out to source) |
 | `discounts.html` | Local student discounts |
+| `map.html` | Interactive map of clubs & bars near campus (Leaflet + OpenStreetMap, no API key) |
 | `societies.html` | Society directory |
 | `profile.html` | Your profile + "uni journey" goals |
 | `ai.html` | Full-screen Ask Uni-Verse AI guide |

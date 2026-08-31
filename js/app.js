@@ -80,6 +80,28 @@
       });
     });
 
+    // ---- venue map (clubs & bars) ----
+    var mapEl = document.getElementById('venueMap');
+    if (mapEl && window.L) {
+      var venueMap = L.map('venueMap', { scrollWheelZoom: false }).setView([51.4855, -3.1795], 14.5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+      }).addTo(venueMap);
+      document.querySelectorAll('.venue-card').forEach(function (card) {
+        var lat = parseFloat(card.dataset.lat), lng = parseFloat(card.dataset.lng), name = card.dataset.name;
+        if (isNaN(lat) || isNaN(lng)) return;
+        var marker = L.marker([lat, lng]).addTo(venueMap).bindPopup('<strong>' + name + '</strong>');
+        var btn = card.querySelector('.locate-btn');
+        if (btn) {
+          btn.addEventListener('click', function () {
+            venueMap.flyTo([lat, lng], 17);
+            marker.openPopup();
+          });
+        }
+      });
+    }
+
     // ---- chat: click suggestion or send ----
     var chatInput = document.querySelector('.chat-input input');
     var chatBody = document.querySelector('.chat-body');

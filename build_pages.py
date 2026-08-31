@@ -34,6 +34,7 @@ ICONS = {
     'arrow': '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>',
     'palette': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="2.5" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="2.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="2.5" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="2.5" fill="currentColor" stroke="none"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 000 20 2.5 2.5 0 002-4 2 2 0 011.7-3.2H18a4 4 0 004-4 10 10 0 00-10-9z"/></svg>',
     'check': '<svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>',
+    'map': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M1 6l7-3 8 3 7-3v15l-7 3-8-3-7 3V6z"/><path stroke-linecap="round" d="M8 3v15M16 6v15"/></svg>',
 }
 
 NAV = [
@@ -41,10 +42,15 @@ NAV = [
     ('events.html', 'events', 'Events'),
     ('opportunities.html', 'opps', 'Opportunities'),
     ('discounts.html', 'discounts', 'Discounts'),
+    ('map.html', 'map', 'Map'),
     ('societies.html', 'societies', 'Societies'),
     ('profile.html', 'profile', 'Your journey'),
     ('ai.html', 'ai', 'Ask Uni-Verse AI'),
 ]
+
+# Leaflet (OpenStreetMap) — no API key needed, used on the venue map page
+LEAFLET_CSS = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">'
+LEAFLET_JS = '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>'
 
 def rail(active):
     btns = ['<div class="rail-logo">U</div>']
@@ -87,17 +93,17 @@ def footer():
     return ('<footer><div class="mono-eyebrow">Uni-Verse Cardiff · Concept prototype</div>'
             '<div class="mono-eyebrow">Everything Cardiff, in one place</div></footer>')
 
-def page(title, active, body, two_col_note='', chat=False):
+def page(title, active, body, two_col_note='', chat=False, extra_head='', extra_scripts=''):
     shell_open = '<div class="app">' + rail(active) + '<div class="main">' + topbar()
     if chat:
         shell_open = '<div class="app">' + rail(active) + '<div class="main">' + topbar()
     doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-           '<title>%s · Uni-Verse Cardiff</title>%s'
+           '<title>%s · Uni-Verse Cardiff</title>%s%s'
            '<link rel="stylesheet" href="css/styles.css"></head><body>'
-           '%s%s</div></div>%s'
+           '%s%s</div></div>%s%s'
            '<script src="js/app.js"></script></body></html>'
-           % (title, FONTS, shell_open, body, theme_switcher()))
+           % (title, FONTS, extra_head, shell_open, body, theme_switcher(), extra_scripts))
     return doc
 
 # ---------------- shared content bits ----------------
@@ -372,6 +378,45 @@ def build_societies():
             '<div class="grid g3">%s</div></div>' % ''.join(cards))
     return page('Societies', 'societies', body)
 
+# ================= PAGE: MAP =================
+def venue_card(emoji, bg, cat, name, area, desc, lat, lng):
+    return ('<div class="card venue-card" data-lat="%s" data-lng="%s" data-name="%s">'
+            '<div class="card-media" style="background:%s">'
+            '<span class="chip-cat">%s</span><span class="emoji">%s</span></div>'
+            '<div class="card-body"><h3>%s</h3><div class="by">%s</div><p>%s</p>'
+            '<div class="card-foot"><span class="stat">%s</span>'
+            '<button class="pill primary locate-btn">Show on map %s</button></div></div></div>'
+            % (lat, lng, name, bg, cat, emoji, name, area, desc, cat, ICONS['pin']))
+
+def build_map():
+    venues = [
+        ('🎶', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Club', 'Clwb Ifor Bach', 'Womanby Street',
+         "Cardiff's legendary indie &amp; alt club — three floors, gigs most nights.", 51.4816, -3.1811),
+        ('🪩', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Club', 'PRYZM Cardiff', 'Greyfriars Road',
+         'Big-room clubbing — the go-to for student nights out.', 51.4795, -3.1774),
+        ('🤘', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Club', 'The Moon Club', 'Womanby Street',
+         "Rock, metal and alt club nights on Cardiff's music street.", 51.4813, -3.1815),
+        ('🎸', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Club', 'Fuel Rock Club', 'Windsor Place',
+         "Two floors of rock, punk and metal — Cardiff's heaviest night out.", 51.4816, -3.1751),
+        ('🍻', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Bar', 'The Woodville', 'Cathays',
+         'Classic student pub two minutes from halls — quiz nights, sport, cheap pints.', 51.4913, -3.1815),
+        ('🍸', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Bar', 'Dead Canary', 'High Street Arcade',
+         'Speakeasy-style cocktail bar tucked in the arcades.', 51.4816, -3.1785),
+        ('🍺', 'linear-gradient(135deg,var(--amber),var(--sky))', 'Bar', 'BrewDog Cardiff', 'Westgate Street',
+         'Craft beer bar opposite the stadium — big matchday crowd.', 51.4787, -3.1809),
+        ('🍷', 'linear-gradient(135deg,var(--coral),var(--lime))', 'Bar', 'The Owain Glyndŵr', 'St John Street',
+         'Wetherspoons in an old church — student-priced, always packed.', 51.4813, -3.1800),
+    ]
+    cards = ''.join(venue_card(*v) for v in venues)
+    body = ('<div class="content">'
+            '<div class="page-head"><div class="ey mono-eyebrow">Night out sorted</div>'
+            '<h1>Clubs &amp; bars near campus</h1>'
+            '<div class="sub">Every club and bar students actually go to, pinned on the map. Tap a card to fly to it, or a pin to see what it is.</div></div>'
+            '<div class="chips"><div class="chip on">All</div><div class="chip">Clubs</div><div class="chip">Bars</div></div>'
+            '<div class="widget map-widget"><div id="venueMap"></div></div>'
+            '<div class="grid g3">%s</div></div>' % cards)
+    return page('Map', 'map', body, extra_head=LEAFLET_CSS, extra_scripts=LEAFLET_JS)
+
 # ================= PAGE: PROFILE / JOURNEY =================
 def build_profile():
     stat_strip = ('<div class="stat-strip">'
@@ -515,6 +560,7 @@ pages = {
     'events.html': build_events(),
     'opportunities.html': build_opps(),
     'discounts.html': build_discounts(),
+    'map.html': build_map(),
     'societies.html': build_societies(),
     'profile.html': build_profile(),
     'ai.html': build_ai(),
