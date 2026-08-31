@@ -1,0 +1,761 @@
+<title>Cardiff Night Map</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --ink: #f4f5f9;
+    --ink-2: #e7e9f0;
+    --surface: #ffffff;
+    --surface-2: #f0f1f6;
+    --border: #dcdfe9;
+    --text: #1a1d2b;
+    --text-dim: #5b6178;
+    --text-faint: #8a90a6;
+    --accent: #e85d3f;
+    --accent-ink: #ffffff;
+    --accent-soft: #fde4dc;
+    --river: #a9c8d6;
+    --park: #cddcc4;
+    --building: #ced1dd;
+    --building-2: #bfc3d1;
+    --building-stroke: #b0b4c4;
+    --buzzing: #e85d3f;
+    --busy: #e2a23b;
+    --quiet: #8a90a6;
+    --shadow: 0 1px 2px rgba(20,23,35,0.06), 0 8px 24px rgba(20,23,35,0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #05060b;
+      --ink-2: #0c0e17;
+      --surface: #0e101b;
+      --surface-2: #151827;
+      --border: #232840;
+      --text: #eef0f6;
+      --text-dim: #a2a8c0;
+      --text-faint: #666c8a;
+      --accent: #ff8a5f;
+      --accent-ink: #1a0d08;
+      --accent-soft: #34190f;
+      --river: #16283a;
+      --park: #172618;
+      --building: #10121b;
+      --building-2: #171a26;
+      --building-stroke: #232840;
+      --buzzing: #ff8a5f;
+      --busy: #e8b256;
+      --quiet: #666c8a;
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 16px 40px rgba(0,0,0,0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink: #05060b;
+    --ink-2: #0c0e17;
+    --surface: #0e101b;
+    --surface-2: #151827;
+    --border: #232840;
+    --text: #eef0f6;
+    --text-dim: #a2a8c0;
+    --text-faint: #666c8a;
+    --accent: #ff8a5f;
+    --accent-ink: #1a0d08;
+    --accent-soft: #34190f;
+    --river: #16283a;
+    --park: #172618;
+    --buzzing: #ff8a5f;
+    --busy: #e8b256;
+    --quiet: #666c8a;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 16px 40px rgba(0,0,0,0.55);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+
+  /* ---------- Header ---------- */
+  header.top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(28px, 4vw, 40px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+    color: var(--text);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .top p.sub {
+    max-width: 46ch;
+    color: var(--text-dim);
+    font-size: 14.5px;
+    line-height: 1.55;
+    margin: 10px 0 0;
+  }
+
+  .status-strip {
+    display: flex;
+    gap: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .status-strip strong {
+    color: var(--text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- Layout ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- Map card ---------- */
+  .map-card { padding: 18px 18px 14px; }
+
+  .map-card .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+  .map-card h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .legend {
+    display: flex;
+    gap: 14px;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .map-wrap {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+
+  svg#map { display: block; width: 100%; height: auto; }
+
+  .map-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    fill: var(--text-faint);
+    letter-spacing: 0.03em;
+  }
+
+  .pin { cursor: pointer; outline: none; }
+  .pin circle.ring {
+    fill: none;
+    stroke-width: 2;
+    opacity: 0;
+  }
+  .pin.buzzing circle.ring {
+    stroke: var(--buzzing);
+    animation: pulse 2.2s ease-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pin.buzzing circle.ring { animation: none; opacity: 0.35; }
+  }
+  @keyframes pulse {
+    0% { r: 14; opacity: 0.55; }
+    100% { r: 26; opacity: 0; }
+  }
+  .pin circle.dot {
+    stroke: var(--surface);
+    stroke-width: 2.5;
+    transition: r 0.15s ease;
+  }
+  .pin.buzzing circle.dot { fill: var(--buzzing); }
+  .pin.busy circle.dot { fill: var(--busy); }
+  .pin.quiet circle.dot { fill: var(--quiet); }
+  .pin:hover circle.dot, .pin:focus circle.dot { r: 15; }
+  .pin.active circle.dot { r: 15.5; stroke: var(--accent); stroke-width: 3; }
+  .pin text.pin-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    fill: #fff;
+    paint-order: stroke;
+    stroke: rgba(0,0,0,0.4);
+    stroke-width: 2.5px;
+    stroke-linejoin: round;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+  .pin text.pin-label {
+    font-family: 'Public Sans', sans-serif;
+    font-weight: 600;
+    font-size: 10.5px;
+    fill: var(--text);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .pin:focus-visible circle.dot { stroke: var(--accent); stroke-width: 3; }
+
+  .map-footnote {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin: 10px 2px 2px;
+    line-height: 1.5;
+  }
+
+  /* ---------- Side rail ---------- */
+  .rail { display: flex; flex-direction: column; gap: 16px; }
+
+  .detail-card { padding: 20px; min-height: 168px; }
+  .detail-empty {
+    color: var(--text-faint);
+    font-size: 13.5px;
+    line-height: 1.6;
+    padding: 8px 2px;
+  }
+
+  .venue-name {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 21px;
+    font-weight: 600;
+    margin: 0 0 2px;
+    line-height: 1.15;
+  }
+  .venue-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    margin-bottom: 12px;
+  }
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 2.5px 8px;
+    border-radius: 100px;
+    text-transform: uppercase;
+  }
+  .chip.buzzing { background: color-mix(in srgb, var(--buzzing) 18%, transparent); color: var(--buzzing); }
+  .chip.busy { background: color-mix(in srgb, var(--busy) 18%, transparent); color: var(--busy); }
+  .chip.quiet { background: color-mix(in srgb, var(--quiet) 18%, transparent); color: var(--text-dim); }
+
+  .venue-desc {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin: 0 0 16px;
+  }
+
+  .count-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .count-row .n {
+    font-size: 28px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+  .count-row .label {
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  button.attend-btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 9px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: 'Public Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.08s ease, opacity 0.15s ease;
+  }
+  button.attend-btn:hover { opacity: 0.92; }
+  button.attend-btn:active { transform: scale(0.98); }
+  button.attend-btn.going {
+    background: transparent;
+    color: var(--accent);
+  }
+  button.attend-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- List card ---------- */
+  .list-card { padding: 16px 16px 8px; }
+  .list-card h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 15.5px;
+    font-weight: 600;
+    margin: 4px 6px 10px;
+  }
+  ul.venue-list { list-style: none; margin: 0; padding: 0; }
+  ul.venue-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  ul.venue-list li:hover { background: var(--surface-2); }
+  ul.venue-list li.selected {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  ul.venue-list .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+  }
+  ul.venue-list .dot.buzzing { background: var(--buzzing); }
+  ul.venue-list .dot.busy { background: var(--busy); }
+  ul.venue-list .dot.quiet { background: var(--quiet); }
+  ul.venue-list .name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+  }
+  ul.venue-list .cat {
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  ul.venue-list .cnt {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  footer.note {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.6;
+  }
+  footer.note code {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+</style>
+
+<div class="shell">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">UNIverse &middot; feature concept</p>
+      <h1>Where's it <em>going off</em> tonight?</h1>
+      <p class="sub">Tap a spot on the map, mark yourself as going, and everyone else planning a night out can see where's actually filling up &mdash; before they leave the flat.</p>
+    </div>
+    <div class="status-strip">
+      <span>Live pins <strong id="stat-total">0</strong></span>
+      <span>Buzzing <strong id="stat-buzzing">0</strong></span>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- MAP -->
+    <div class="panel map-card">
+      <div class="card-head">
+        <h2>Cardiff city centre</h2>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--buzzing)"></i>Buzzing</span>
+          <span><i class="dot" style="background:var(--busy)"></i>Getting busy</span>
+          <span><i class="dot" style="background:var(--quiet)"></i>Quiet</span>
+        </div>
+      </div>
+
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 800 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustrated map of Cardiff city centre">
+          <!-- ground -->
+          <rect x="0" y="0" width="800" height="620" fill="var(--surface-2)"></rect>
+
+          <!-- river taff, running north-south along the west edge past the castle -->
+          <path d="M 130 -10 C 110 70, 150 140, 120 220 C 95 290, 130 360, 105 440 C 85 500, 115 560, 95 630"
+                fill="none" stroke="var(--river)" stroke-width="30" stroke-linecap="round"></path>
+
+          <!-- bute park, north of the castle along the river -->
+          <path d="M 60 -10 C 190 10, 230 70, 200 150 C 180 210, 130 220, 100 190 C 70 150, 40 60, 60 -10 Z"
+                fill="var(--park)"></path>
+
+          <!-- cathays park / civic centre green, north-east — home turf of the SU -->
+          <ellipse cx="590" cy="110" rx="130" ry="85" fill="var(--park)"></ellipse>
+
+          <!-- building blocks, filling the gaps between river, parks and streets -->
+          <g id="buildings"></g>
+
+          <!-- castle block, east bank of the river at the top of the old town -->
+          <rect x="215" y="145" width="75" height="58" rx="4" fill="var(--surface)" stroke="var(--border)"></rect>
+          <text x="252" y="222" text-anchor="middle" class="map-label">CARDIFF CASTLE</text>
+
+          <!-- roads, laid out roughly as the real old-town grid -->
+          <g stroke="var(--border)" stroke-width="9" fill="none" stroke-linecap="round">
+            <path d="M 300 205 L 320 580"></path>              <!-- High St into St Mary St, running south -->
+            <path d="M 290 205 L 470 175"></path>              <!-- Castle St, east past the castle -->
+            <path d="M 470 175 L 560 400"></path>              <!-- Westgate into Wood St, curving south-east -->
+            <path d="M 330 175 L 610 130"></path>              <!-- Duke St into Queen St, north-east -->
+            <path d="M 610 130 L 660 260"></path>              <!-- Queen St down toward the station -->
+            <path d="M 255 205 L 258 300"></path>              <!-- Womanby St, hugging the castle wall -->
+            <path d="M 320 470 L 430 450"></path>              <!-- Guildhall Pl toward Mill Lane -->
+            <path d="M 430 450 L 450 380"></path>              <!-- Mill Lane, short lane of bars -->
+          </g>
+          <text x="325" y="595" text-anchor="middle" class="map-label">ST MARY ST</text>
+          <text x="565" y="415" text-anchor="middle" class="map-label">WOOD ST</text>
+          <text x="612" y="122" text-anchor="middle" class="map-label">QUEEN ST</text>
+          <text x="222" y="255" text-anchor="middle" class="map-label" transform="rotate(-84 222 255)">WOMANBY ST</text>
+          <text x="455" y="368" text-anchor="middle" class="map-label">MILL LANE</text>
+          <text x="590" y="55" text-anchor="middle" class="map-label">CATHAYS PARK</text>
+
+          <!-- pins injected by JS -->
+          <g id="pins"></g>
+        </svg>
+      </div>
+      <p class="map-footnote">Illustrative layout, not to scale &mdash; concept only for now.</p>
+    </div>
+
+    <!-- RAIL -->
+    <div class="rail">
+      <div class="panel detail-card" id="detail-card">
+        <div class="detail-empty">Tap a pin on the map, or pick a venue from the list below, to see who's around tonight.</div>
+      </div>
+
+      <div class="panel list-card">
+        <h2>Tonight, ranked</h2>
+        <ul class="venue-list" id="venue-list"></ul>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="note">
+    Prototype only &mdash; counts are stored in <code>localStorage</code> on this device, so they reset per browser and aren't shared between people yet. A real version would need everyone's taps to update the same shared count.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'universe-night-map-v1';
+
+  // ---- building texture: fills the gaps between river, parks and streets ----
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function distToSegment(px, py, x1, y1, x2, y2) {
+    var dx = x2 - x1, dy = y2 - y1;
+    var len2 = dx * dx + dy * dy;
+    var t = len2 ? ((px - x1) * dx + (py - y1) * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    var ex = x1 + t * dx, ey = y1 + t * dy;
+    return Math.hypot(px - ex, py - ey);
+  }
+
+  function inEllipse(px, py, cx, cy, rx, ry) {
+    var dx = (px - cx) / rx, dy = (py - cy) / ry;
+    return dx * dx + dy * dy <= 1;
+  }
+
+  var RIVER_PTS = [[130, -10], [110, 70], [150, 140], [120, 220], [95, 290], [130, 360], [105, 440], [85, 500], [115, 560], [95, 630]];
+  var ROADS = [
+    { x1: 300, y1: 205, x2: 320, y2: 580, buf: 15 },
+    { x1: 290, y1: 205, x2: 470, y2: 175, buf: 15 },
+    { x1: 470, y1: 175, x2: 560, y2: 400, buf: 15 },
+    { x1: 330, y1: 175, x2: 610, y2: 130, buf: 15 },
+    { x1: 610, y1: 130, x2: 660, y2: 260, buf: 15 },
+    { x1: 255, y1: 205, x2: 258, y2: 300, buf: 13 },
+    { x1: 320, y1: 470, x2: 430, y2: 450, buf: 13 },
+    { x1: 430, y1: 450, x2: 450, y2: 380, buf: 13 }
+  ];
+  var CASTLE = { x1: 205, y1: 135, x2: 300, y2: 213 };
+
+  function blocked(cx, cy) {
+    if (cx < 16 || cx > 784 || cy < 16 || cy > 604) return true;
+    if (inEllipse(cx, cy, 125, 85, 105, 115)) return true;      // bute park
+    if (inEllipse(cx, cy, 590, 110, 142, 97)) return true;      // cathays park
+    if (cx > CASTLE.x1 && cx < CASTLE.x2 && cy > CASTLE.y1 && cy < CASTLE.y2) return true;
+    for (var i = 0; i < RIVER_PTS.length - 1; i++) {
+      var a = RIVER_PTS[i], b = RIVER_PTS[i + 1];
+      if (distToSegment(cx, cy, a[0], a[1], b[0], b[1]) < 27) return true;
+    }
+    for (var j = 0; j < ROADS.length; j++) {
+      var r = ROADS[j];
+      if (distToSegment(cx, cy, r.x1, r.y1, r.x2, r.y2) < r.buf) return true;
+    }
+    return false;
+  }
+
+  function drawBuildings() {
+    var rand = mulberry32(2026);
+    var group = document.getElementById('buildings');
+    var stepX = 21, stepY = 18;
+    for (var y = 18; y < 610; y += stepY) {
+      for (var x = 18; x < 790; x += stepX) {
+        var jx = x + (rand() - 0.5) * 6;
+        var jy = y + (rand() - 0.5) * 5;
+        if (blocked(jx, jy)) continue;
+        if (rand() < 0.1) continue; // small gaps / yards between buildings
+        var w = stepX * (0.62 + rand() * 0.3);
+        var h = stepY * (0.6 + rand() * 0.32);
+        var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', (jx - w / 2).toFixed(1));
+        rect.setAttribute('y', (jy - h / 2).toFixed(1));
+        rect.setAttribute('width', w.toFixed(1));
+        rect.setAttribute('height', h.toFixed(1));
+        rect.setAttribute('rx', 1.5);
+        rect.setAttribute('fill', rand() < 0.55 ? 'var(--building)' : 'var(--building-2)');
+        rect.setAttribute('stroke', 'var(--building-stroke)');
+        rect.setAttribute('stroke-width', 0.75);
+        group.appendChild(rect);
+      }
+    }
+  }
+  // drawBuildings() disabled — map shown without building blocks
+
+  var venues = [
+    { id: 'su',      name: "Cardiff SU – Y Plas", cat: 'Students’ Union', x: 605, y: 95, capacity: 50, base: 14,
+      desc: 'Union nightclub up by Cathays Park — usually the first stop, cheap drinks and a student-only door.' },
+    { id: 'yolo',    name: 'Yolo',              cat: 'Club',       x: 322, y: 500, capacity: 45, base: 9,
+      desc: 'Bottom of St Mary St. Big room, big queue after 11 — reliable Wednesday sports night.' },
+    { id: 'pryzm',   name: 'PRYZM',             cat: 'Club',       x: 555, y: 355, capacity: 60, base: 6,
+      desc: 'Multi-room club off Wood St, near the station — fills up later than most.' },
+    { id: 'live',    name: 'Live Lounge',       cat: 'Club / Bar', x: 318, y: 400, capacity: 40, base: 11,
+      desc: 'St Mary Street staple, good pre-drinks crowd from 9.' },
+    { id: 'clwb',    name: 'Clwb Ifor Bach',    cat: 'Live music', x: 250, y: 260, capacity: 25, base: 4,
+      desc: 'Gigs and DJ nights on three small floors on Womanby St — check what’s on first.' },
+    { id: 'moon',    name: 'The Moon',          cat: 'Bar',        x: 255, y: 230, capacity: 18, base: 3,
+      desc: 'Chill bar on Womanby St, right by the castle — good for starting the night slow.' },
+    { id: 'blonde',  name: 'Dirty Blonde',      cat: 'Bar',        x: 445, y: 405, capacity: 20, base: 5,
+      desc: 'Cocktail bar on Mill Lane — nice for a pre-club sit-down.' },
+    { id: 'fuel',    name: 'Fuel',              cat: 'Bar / Club', x: 340, y: 260, capacity: 22, base: 2,
+      desc: 'Just off Castle St. Rock and alt nights, small dancefloor, gets loud fast.' }
+  ];
+
+  var state = {};
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    state = raw ? JSON.parse(raw) : {};
+  } catch (e) { state = {}; }
+
+  var selectedId = null;
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function isGoing(id) {
+    return !!(state[id] && state[id].going);
+  }
+
+  function countFor(v) {
+    return v.base + (isGoing(v.id) ? 1 : 0);
+  }
+
+  function statusFor(v) {
+    var ratio = countFor(v) / v.capacity;
+    if (ratio >= 0.55) return 'buzzing';
+    if (ratio >= 0.22) return 'busy';
+    return 'quiet';
+  }
+
+  function statusLabel(s) {
+    return s === 'buzzing' ? 'Buzzing' : s === 'busy' ? 'Getting busy' : 'Quiet';
+  }
+
+  var pinsGroup = document.getElementById('pins');
+  var pinEls = {};
+  var pinCountEls = {};
+
+  venues.forEach(function (v) {
+    var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'pin');
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('role', 'button');
+    g.setAttribute('data-id', v.id);
+
+    var ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('class', 'ring');
+    ring.setAttribute('cx', v.x);
+    ring.setAttribute('cy', v.y);
+    ring.setAttribute('r', 14);
+    g.appendChild(ring);
+
+    var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('class', 'dot');
+    dot.setAttribute('cx', v.x);
+    dot.setAttribute('cy', v.y);
+    dot.setAttribute('r', 13);
+    g.appendChild(dot);
+
+    var count = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    count.setAttribute('class', 'pin-count');
+    count.setAttribute('x', v.x);
+    count.setAttribute('y', v.y + 0.5);
+    g.appendChild(count);
+    pinCountEls[v.id] = count;
+
+    var label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'pin-label');
+    label.setAttribute('x', v.x + 19);
+    label.setAttribute('y', v.y + 4);
+    label.textContent = v.name;
+    g.appendChild(label);
+
+    g.addEventListener('click', function () { select(v.id); });
+    g.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(v.id); }
+    });
+
+    pinsGroup.appendChild(g);
+    pinEls[v.id] = g;
+  });
+
+  var listEl = document.getElementById('venue-list');
+  var detailEl = document.getElementById('detail-card');
+  var statTotal = document.getElementById('stat-total');
+  var statBuzzing = document.getElementById('stat-buzzing');
+
+  function render() {
+    // pins
+    venues.forEach(function (v) {
+      var s = statusFor(v);
+      var g = pinEls[v.id];
+      g.classList.remove('buzzing', 'busy', 'quiet', 'active');
+      g.classList.add(s);
+      if (v.id === selectedId) g.classList.add('active');
+      pinCountEls[v.id].textContent = countFor(v);
+    });
+
+    // stats
+    statTotal.textContent = venues.length;
+    statBuzzing.textContent = venues.filter(function (v) { return statusFor(v) === 'buzzing'; }).length;
+
+    // list, ranked by count desc
+    var ranked = venues.slice().sort(function (a, b) { return countFor(b) - countFor(a); });
+    listEl.innerHTML = '';
+    ranked.forEach(function (v) {
+      var s = statusFor(v);
+      var li = document.createElement('li');
+      if (v.id === selectedId) li.classList.add('selected');
+      li.innerHTML =
+        '<span class="dot ' + s + '"></span>' +
+        '<span class="name">' + v.name + '<br><span class="cat">' + v.cat + '</span></span>' +
+        '<span class="cnt">' + countFor(v) + '</span>';
+      li.addEventListener('click', function () { select(v.id); });
+      listEl.appendChild(li);
+    });
+
+    // detail
+    if (!selectedId) {
+      detailEl.innerHTML = '<div class="detail-empty">Tap a pin on the map, or pick a venue from the list below, to see who’s around tonight.</div>';
+      return;
+    }
+    var v = venues.filter(function (x) { return x.id === selectedId; })[0];
+    var s = statusFor(v);
+    var going = isGoing(v.id);
+    detailEl.innerHTML =
+      '<h3 class="venue-name">' + v.name + '</h3>' +
+      '<div class="venue-meta">' + v.cat + ' &middot; <span class="chip ' + s + '">' + statusLabel(s) + '</span></div>' +
+      '<p class="venue-desc">' + v.desc + '</p>' +
+      '<div class="count-row"><span class="n">' + countFor(v) + '</span><span class="label">attending tonight</span></div>' +
+      '<button class="attend-btn' + (going ? ' going' : '') + '" id="attend-btn">' + (going ? '✓ You’re going' : 'I’m going') + '</button>';
+
+    document.getElementById('attend-btn').addEventListener('click', function () {
+      if (!state[v.id]) state[v.id] = {};
+      state[v.id].going = !state[v.id].going;
+      save();
+      render();
+    });
+  }
+
+  function select(id) {
+    selectedId = id;
+    render();
+  }
+
+  render();
+})();
+</script>
