@@ -10,10 +10,12 @@ This is a **static front-end prototype** — no backend, no real accounts. It's 
 | `landing.html` | Marketing + sign-up page (start here for the pitch) |
 | `index.html` | Logged-in student **Feed** (the core view) |
 | `events.html` | All events, grid + filters |
+| `bucs.html` | Cardiff University's BUCS sport fixtures (real Men's Super Rugby fixtures incl. the Cardiff Clash derby) |
 | `opportunities.html` | Internships / placements / jobs (links out to source) |
 | `discounts.html` | Local student discounts |
 | `map.html` | Interactive map of clubs & bars near campus (Leaflet + OpenStreetMap, no API key) |
 | `societies.html` | Society directory |
+| `flatmates.html` | Spare-room listings — 2nd/3rd years posting their house directly, no agency |
 | `profile.html` | Your profile + "uni journey" goals |
 | `ai.html` | Full-screen Ask Uni-Verse AI guide |
 
@@ -37,4 +39,4 @@ For styling only, edit `css/styles.css` directly — no rebuild needed.
 
 ## Notes on the concept
 - **Aggregation model:** opportunities and reposted society events link back to the original source ("Apply on site", "reposted from …"). Partners are credited; Uni-Verse is the front door.
-- **Verified orgs only:** social content is society/organisation-hosted (no unvetted user posts), which keeps it partner- and university-friendly.
+- **Verified orgs only:** social content is society/organisation-hosted (no unvetted user posts), which keeps it partner- and university-friendly. `flatmates.html` is the one deliberate exception — genuine peer-to-peer student posts, since there's no "official org" for a spare room.

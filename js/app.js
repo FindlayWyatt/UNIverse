@@ -14,6 +14,23 @@
     });
   }
 
+  // ---- MY CALENDAR: shared storage — anything RSVP'd anywhere on the site lands here ----
+  function calPad(n) { return n < 10 ? '0' + n : '' + n; }
+  function calIsoDate(d) { return d.getFullYear() + '-' + calPad(d.getMonth() + 1) + '-' + calPad(d.getDate()); }
+  function getCalendar() {
+    try { return JSON.parse(window.localStorage.getItem('uv-calendar')) || []; } catch (e) { return []; }
+  }
+  function saveCalendarItems(items) {
+    try { window.localStorage.setItem('uv-calendar', JSON.stringify(items)); } catch (e) {}
+  }
+  function addToCalendar(item) {
+    var items = getCalendar();
+    if (!items.some(function (i) { return i.id === item.id; })) {
+      items.push(item);
+      saveCalendarItems(items);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     // ---- theme switcher ----
     var fab = document.getElementById('themeFab');
@@ -61,6 +78,16 @@
         if (btn.dataset.done === '1') return;
         btn.dataset.done = '1';
         btn.textContent = btn.dataset.rsvp;
+        if (btn.dataset.calTitle && btn.dataset.calDate) {
+          addToCalendar({
+            id: btn.dataset.calTitle + '|' + btn.dataset.calDate,
+            title: btn.dataset.calTitle,
+            date: btn.dataset.calDate,
+            time: btn.dataset.calTime || '',
+            place: btn.dataset.calPlace || '',
+            color: btn.dataset.calColor || 'var(--lime)'
+          });
+        }
       });
     });
 
@@ -117,12 +144,29 @@
       var venues = [];
       document.querySelectorAll('.venue-card').forEach(function (card) {
         var lat = parseFloat(card.dataset.lat), lng = parseFloat(card.dataset.lng);
-        var name = card.dataset.name, cat = card.dataset.cat;
+        var name = card.dataset.name, cat = card.dataset.cat, area = card.dataset.area || cat;
         var baseGoing = parseInt(card.dataset.going, 10) || 0;
         var ticketUrl = card.dataset.ticketUrl, ticketLabel = card.dataset.ticketLabel;
+        var pinColor = card.dataset.pinColor || '';
+        var fixtureDate = card.dataset.fixtureDate || '', fixtureTime = card.dataset.fixtureTime || '';
+        var isFixture = !!fixtureDate;
+        var goingWord = isFixture ? 'going' : 'going tonight';
+        var rsvpWord = isFixture ? "I'm going" : "I'm going tonight";
         if (isNaN(lat) || isNaN(lng)) return;
 
         function currentCount() { return baseGoing + (isGoing(name) ? 1 : 0); }
+        function currentColor() { return pinColor || goingColor(currentCount()); }
+
+        function addVenueToCalendar() {
+          addToCalendar({
+            id: 'venue|' + name,
+            title: name,
+            date: isFixture ? fixtureDate : calIsoDate(new Date()),
+            time: isFixture ? fixtureTime : 'Tonight',
+            place: area,
+            color: currentColor()
+          });
+        }
 
         function popupHtml() {
           var going = isGoing(name), count = currentCount();
@@ -130,20 +174,20 @@
             ? '<a class="popup-tickets" href="' + ticketUrl + '" target="_blank" rel="noopener">' + ticketLabel + ' ↗</a>'
             : '';
           return '<strong>' + name + '</strong><span class="popup-cat">' + cat + '</span>'
-            + '<div class="popup-going"><i class="busy-dot" style="background:' + goingColor(count) + '"></i>' + count + ' going tonight</div>'
+            + '<div class="popup-going"><i class="busy-dot" style="background:' + currentColor() + '"></i>' + count + ' ' + goingWord + '</div>'
             + ticketHtml
             + '<button class="pill primary popup-rsvp"' + (going ? ' disabled' : '') + '>'
-            + (going ? "You're in 🎉" : "I'm going tonight") + '</button>';
+            + (going ? "You're in 🎉" : rsvpWord) + '</button>';
         }
 
-        var marker = L.marker([lat, lng], { icon: pinIcon(goingColor(currentCount())) }).addTo(venueMap).bindPopup(popupHtml());
+        var marker = L.marker([lat, lng], { icon: pinIcon(currentColor()) }).addTo(venueMap).bindPopup(popupHtml());
 
         var cardBtn = card.querySelector('.venue-rsvp');
         var dotEl = card.querySelector('.busy-dot');
         var numEl = card.querySelector('.going-count');
 
         function refreshUI() {
-          var count = currentCount(), color = goingColor(count);
+          var count = currentCount(), color = currentColor();
           marker.setIcon(pinIcon(color));
           marker.setPopupContent(popupHtml());
           if (dotEl) dotEl.style.background = color;
@@ -157,6 +201,7 @@
               setGoing(name);
               refreshUI();
               syncCardButton();
+              addVenueToCalendar();
             });
           }
         });
@@ -180,6 +225,7 @@
           cardBtn.addEventListener('click', function () {
             setGoing(name);
             refreshUI();
+            addVenueToCalendar();
           });
         }
 
@@ -228,6 +274,93 @@
       }
     }
 
+    // ---- my calendar (profile page) — month grid built from everything RSVP'd across the site ----
+    var calGrid = document.getElementById('calGrid');
+    if (calGrid) {
+      var calMonthLabel = document.getElementById('calMonthLabel');
+      var calPrevBtn = document.getElementById('calPrev');
+      var calNextBtn = document.getElementById('calNext');
+      var calDayDetail = document.getElementById('calDayDetail');
+      var calDayDetailTitle = document.getElementById('calDayDetailTitle');
+      var calDayEvents = document.getElementById('calDayEvents');
+
+      var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      var DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      var calToday = new Date();
+      var viewYear = calToday.getFullYear(), viewMonth = calToday.getMonth();
+      var selectedDate = calIsoDate(calToday);
+
+      function entriesFor(dateStr) {
+        return getCalendar().filter(function (e) { return e.date === dateStr; });
+      }
+
+      function showDayDetail(dateStr) {
+        var entries = entriesFor(dateStr);
+        var dateObj = new Date(dateStr + 'T00:00:00');
+        calDayDetailTitle.textContent = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+        if (!entries.length) {
+          calDayEvents.innerHTML = '<div class="cal-empty-msg">Nothing here yet — RSVP to an event, workshop or a night out and it\'ll show up on this day.</div>';
+        } else {
+          calDayEvents.innerHTML = entries.map(function (e) {
+            return '<div class="cal-entry"><span class="cal-entry-dot" style="background:' + (e.color || 'var(--lime)') + '"></span>'
+              + '<div class="cal-entry-body"><div class="cal-entry-title">' + e.title + '</div>'
+              + '<div class="cal-entry-meta">' + (e.time ? e.time + (e.place ? ' · ' : '') : '') + (e.place || '') + '</div></div></div>';
+          }).join('');
+        }
+        calDayDetail.hidden = false;
+      }
+
+      function renderCalendar() {
+        calMonthLabel.textContent = MONTH_NAMES[viewMonth] + ' ' + viewYear;
+        var html = DOW.map(function (d) { return '<div class="cal-dow">' + d + '</div>'; }).join('');
+        var firstOfMonth = new Date(viewYear, viewMonth, 1);
+        var startWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
+        var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        var todayStr = calIsoDate(calToday);
+
+        for (var i = 0; i < startWeekday; i++) html += '<div class="cal-cell empty"></div>';
+        for (var d = 1; d <= daysInMonth; d++) {
+          var dStr = viewYear + '-' + calPad(viewMonth + 1) + '-' + calPad(d);
+          var dayEntries = entriesFor(dStr);
+          var cls = 'cal-cell';
+          if (dStr === todayStr) cls += ' today';
+          if (dStr === selectedDate) cls += ' selected';
+          var shown = dayEntries.slice(0, 2);
+          var extra = dayEntries.length - shown.length;
+          var chips = shown.map(function (e) {
+            return '<span class="cal-chip" style="--chip-color:' + (e.color || 'var(--lime)') + '" title="' + e.title + (e.time ? ' · ' + e.time : '') + '">' + e.title + '</span>';
+          }).join('') + (extra > 0 ? '<span class="cal-chip-more">+' + extra + ' more</span>' : '');
+          html += '<button type="button" class="' + cls + '" data-date="' + dStr + '"><span class="cal-daynum">' + d + '</span>'
+            + (dayEntries.length ? '<span class="cal-chips">' + chips + '</span>' : '') + '</button>';
+        }
+        calGrid.innerHTML = html;
+
+        calGrid.querySelectorAll('.cal-cell:not(.empty)').forEach(function (cell) {
+          cell.addEventListener('click', function () {
+            selectedDate = cell.dataset.date;
+            renderCalendar();
+            showDayDetail(selectedDate);
+          });
+        });
+      }
+
+      if (calPrevBtn) {
+        calPrevBtn.addEventListener('click', function () {
+          viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+          renderCalendar();
+        });
+      }
+      if (calNextBtn) {
+        calNextBtn.addEventListener('click', function () {
+          viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+          renderCalendar();
+        });
+      }
+
+      renderCalendar();
+      showDayDetail(selectedDate);
+    }
+
     // ---- chat: click suggestion or send ----
     var chatInput = document.querySelector('.chat-input input');
     var chatBody = document.querySelector('.chat-body');
@@ -235,7 +368,7 @@
       if (!text || !chatBody) return;
       var u = document.createElement('div');
       u.className = 'msg user-msg';
-      u.innerHTML = '<div class="m-ava">MW</div><div class="m-bubble">' + text + '</div>';
+      u.innerHTML = '<div class="m-ava">FW</div><div class="m-bubble">' + text + '</div>';
       chatBody.appendChild(u);
       chatBody.scrollTop = chatBody.scrollHeight;
       setTimeout(function () {

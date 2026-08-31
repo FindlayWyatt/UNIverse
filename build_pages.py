@@ -36,6 +36,8 @@ ICONS = {
     'check': '<svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>',
     'map': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M1 6l7-3 8 3 7-3v15l-7 3-8-3-7 3V6z"/><path stroke-linecap="round" d="M8 3v15M16 6v15"/></svg>',
     'close': '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>',
+    'bucs': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"/><path stroke-linecap="round" d="M7 5H4a1 1 0 00-1 1v1a4 4 0 004 4M17 5h3a1 1 0 011 1v1a4 4 0 01-4 4"/></svg>',
+    'flatmates': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.8 12.2L21 2M21 2v5M21 2h-5M16.5 6.5L19 9"/></svg>',
 }
 
 # Pin/badge colour by exact "going" count — green under 20, orange 20-69, red 70+
@@ -49,10 +51,12 @@ def going_color(n):
 NAV = [
     ('index.html', 'feed', 'Feed'),
     ('events.html', 'events', 'Events'),
+    ('bucs.html', 'bucs', 'BUCS'),
     ('opportunities.html', 'opps', 'Opportunities'),
     ('discounts.html', 'discounts', 'Discounts'),
     ('map.html', 'map', 'Map'),
     ('societies.html', 'societies', 'Societies'),
+    ('flatmates.html', 'flatmates', 'Flatmates'),
     ('profile.html', 'profile', 'Your journey'),
     ('ai.html', 'ai', 'Ask Uni-Verse AI'),
 ]
@@ -61,13 +65,16 @@ NAV = [
 LEAFLET_CSS = '<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">'
 LEAFLET_JS = '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>'
 
+# Cardiff SU's own societies page — the official place to actually join (used on the Societies page)
+SU_SOCIETIES_URL = 'https://www.cardiffstudents.com/activities/societies/'
+
 def rail(active):
     btns = ['<div class="rail-logo">U</div>']
     for href, key, label in NAV:
         cls = 'rail-btn active' if key == active else 'rail-btn'
         btns.append('<a class="%s" href="%s"><span class="tip">%s</span>%s</a>' % (cls, href, label, ICONS[key]))
     btns.append('<div class="rail-spacer"></div>')
-    btns.append('<a class="rail-avatar" href="profile.html">MW</a>')
+    btns.append('<a class="rail-avatar" href="profile.html">FW</a>')
     return '<nav class="rail">' + ''.join(btns) + '</nav>'
 
 def topbar():
@@ -194,7 +201,9 @@ def post_social():
             '<div class="bit">%s 84 going</div></div>'
             '<div class="post-foot"><div class="react"><span>♥ 126</span><span>💬 18</span><span>↗ Share</span></div>'
             '<div class="post-actions"><button class="pill">Save</button>'
-            '<button class="pill coral" data-rsvp="You\'re in 🎉">I\'m going</button></div></div></article>'
+            '<button class="pill coral" data-rsvp="You\'re in 🎉" data-cal-title="Games Night + Pizza" '
+            'data-cal-date="2026-10-02" data-cal-time="7:00pm" data-cal-place="Students\' Union, Y Plas" '
+            'data-cal-color="var(--coral)">I\'m going</button></div></div></article>'
             % (VERIFY, ICONS['cal'], ICONS['pin'], ICONS['people']))
 
 def post_deal():
@@ -236,13 +245,15 @@ def post_workshop():
             '<div class="bit">%s sbarc | spark</div></div>'
             '<div class="post-foot"><div class="react"><span>♥ 61</span><span>💬 7</span></div>'
             '<div class="post-actions"><button class="pill">Save</button>'
-            '<button class="pill primary" data-rsvp="Reserved ✓">Reserve spot</button></div></div></article>'
+            '<button class="pill primary" data-rsvp="Reserved ✓" data-cal-title="CV Clinic + Networking" '
+            'data-cal-date="2026-10-08" data-cal-time="5:30pm" data-cal-place="sbarc | spark" '
+            'data-cal-color="var(--amber)">Reserve spot</button></div></div></article>'
             % (VERIFY, ICONS['cal'], ICONS['pin']))
 
 # ================= PAGE: FEED =================
 def build_feed():
     body = ('<div class="content two-col"><div class="feed-col">'
-            '<div class="greeting"><div class="hi display">Alright, Murray <span class="wave">👋</span></div>'
+            '<div class="greeting"><div class="hi display">Alright, Findlay <span class="wave">👋</span></div>'
             '<div class="sub">3 events near you this week · 2 new opportunities in your field · Freshers\' Fair is live</div></div>'
             '<div class="chips"><div class="chip on">Everything</div>'
             '<div class="chip"><span class="cd" style="background:var(--coral)"></span>Social</div>'
@@ -257,27 +268,35 @@ def build_feed():
     return page('Feed', 'feed', body)
 
 # ================= PAGE: EVENTS =================
-def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going, cta):
+def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going, cta, iso_date, color,
+                ticket_url='', ticket_label=''):
     v = VERIFY if verified else ''
+    cal_time = date.split(' · ')[-1]
+    ticket_html = ''
+    if ticket_url:
+        ticket_html = ('<a class="ticket-link" href="%s" target="_blank" rel="noopener">%s %s</a>'
+                        % (ticket_url, ticket_label, ICONS['ext']))
     return ('<div class="card"><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
             '<button class="save-heart">%s</button>'
             '<span class="emoji">%s</span></div>'
             '<div class="card-body"><h3>%s</h3>'
             '<div class="by">%s%s</div>'
-            '<div class="card-info"><div class="bit">%s %s</div><div class="bit">%s %s</div></div>'
+            '<div class="card-info"><div class="bit">%s %s</div><div class="bit">%s %s</div></div>%s'
             '<div class="card-foot"><span class="stat">%s going</span>'
-            '<button class="pill primary" data-rsvp="Going ✓">%s</button></div></div></div>'
-            % (bg, cat, ICONS['heart'], emoji, title, org, v, ICONS['cal'], date, ICONS['pin'], place, going, cta))
+            '<button class="pill primary" data-rsvp="Going ✓" data-cal-title="%s" data-cal-date="%s" '
+            'data-cal-time="%s" data-cal-place="%s" data-cal-color="%s">%s</button></div></div></div>'
+            % (bg, cat, ICONS['heart'], emoji, title, org, v, ICONS['cal'], date, ICONS['pin'], place, ticket_html,
+               going, title, iso_date, cal_time, place, color, cta))
 
 def build_events():
     cards = [
-        event_card('🎮','linear-gradient(135deg,var(--coral),var(--amber))','Social','', 'Games Night + Pizza','Computer Science Society',True,'Thu 2 Oct · 7pm','SU, Y Plas','84','I\'m going'),
-        event_card('🎤','linear-gradient(135deg,var(--sky),var(--lime))','Social','', 'Open Mic Night','Music Society',True,'Fri 3 Oct · 8pm','The Taf','56','I\'m going'),
-        event_card('💼','linear-gradient(135deg,var(--amber),var(--coral))','Workshop','', 'CV Clinic + Networking','Enactus Cardiff',True,'Wed 8 Oct · 5:30pm','sbarc | spark','40','Reserve'),
-        event_card('🧗','linear-gradient(135deg,var(--lime),var(--sky))','Sport','', 'Give It A Go: Bouldering','Mountaineering Club',True,'Sat 11 Oct · 2pm','Boulders CDF','22','I\'m going'),
-        event_card('🎬','linear-gradient(135deg,var(--coral),var(--sky))','Social','', 'Film Night: Cult Classics','Film Society',True,'Sun 12 Oct · 6pm','SU Cinema','70','I\'m going'),
-        event_card('🌍','linear-gradient(135deg,var(--sky),var(--amber))','Talk','', 'Careers in Sustainability','Careers Service',True,'Tue 14 Oct · 1pm','Glamorgan Building','35','Reserve'),
+        event_card('🎮','linear-gradient(135deg,var(--coral),var(--amber))','Social','', 'Games Night + Pizza','Computer Science Society',True,'Thu 2 Oct · 7pm','SU, Y Plas','84','I\'m going','2026-10-02','var(--coral)'),
+        event_card('🎤','linear-gradient(135deg,var(--sky),var(--lime))','Social','', 'Open Mic Night','Music Society',True,'Fri 3 Oct · 8pm','The Taf','56','I\'m going','2026-10-03','var(--coral)'),
+        event_card('💼','linear-gradient(135deg,var(--amber),var(--coral))','Workshop','', 'CV Clinic + Networking','Enactus Cardiff',True,'Wed 8 Oct · 5:30pm','sbarc | spark','40','Reserve','2026-10-08','var(--amber)'),
+        event_card('🧗','linear-gradient(135deg,var(--lime),var(--sky))','Sport','', 'Give It A Go: Bouldering','Mountaineering Club',True,'Sat 11 Oct · 2pm','Boulders CDF','22','I\'m going','2026-10-11','var(--lime)'),
+        event_card('🎬','linear-gradient(135deg,var(--coral),var(--sky))','Social','', 'Film Night: Cult Classics','Film Society',True,'Sun 12 Oct · 6pm','SU Cinema','70','I\'m going','2026-10-12','var(--coral)'),
+        event_card('🌍','linear-gradient(135deg,var(--sky),var(--amber))','Talk','', 'Careers in Sustainability','Careers Service',True,'Tue 14 Oct · 1pm','Glamorgan Building','35','Reserve','2026-10-14','var(--sky)'),
     ]
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">What\'s on</div>'
@@ -288,6 +307,54 @@ def build_events():
             '<div class="chip">This week</div><div class="chip">Free</div></div>'
             '<div class="grid g3">%s</div></div>' % ''.join(cards))
     return page('Events', 'events', body)
+
+# ================= PAGE: BUCS =================
+def build_bucs():
+    # Real fixtures — Cardiff University Men's BUCS Super Rugby, 2026-27 season (bucs.org.uk)
+    fixtures = [
+        event_card('🏉', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Rugby', '',
+                    'Cardiff vs Hartpury', 'Round 1 · Home · BUCS Super Rugby', True,
+                    'Wed 23 Sep · 2pm', 'Cardiff University Sports Fields, Llanrumney', '54', 'I\'m going',
+                    '2026-09-23', 'var(--coral)',
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+        event_card('🏉', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Rugby', '',
+                    'Durham vs Cardiff', 'Round 2 · Away · BUCS Super Rugby', True,
+                    'Wed 30 Sep · 2pm', 'Durham', '11', 'I\'m going',
+                    '2026-09-30', 'var(--coral)',
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+        event_card('🏆', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Derby', '',
+                    'Cardiff vs Cardiff Met', 'Round 3 · Home · The Cardiff Clash', True,
+                    'Wed 7 Oct · 7:30pm', 'Cardiff Arms Park', '340', 'I\'m going',
+                    '2026-10-07', 'var(--coral)',
+                    'https://www.bucs.org.uk/tickets.html', 'The Cardiff Clash — get tickets'),
+        event_card('🏉', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Rugby', '',
+                    'Brunel vs Cardiff', 'Round 4 · Away · BUCS Super Rugby', True,
+                    'Wed 14 Oct · 2pm', 'Brunel', '9', 'I\'m going',
+                    '2026-10-14', 'var(--coral)',
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+        event_card('🏉', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Rugby', '',
+                    'Cardiff vs Nottingham', 'Round 5 · Home · BUCS Super Rugby', True,
+                    'Wed 28 Oct · 2pm', 'Cardiff University Sports Fields, Llanrumney', '61', 'I\'m going',
+                    '2026-10-28', 'var(--coral)',
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+        event_card('🏉', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Rugby', '',
+                    'Exeter vs Cardiff', 'Round 6 · Away · BUCS Super Rugby', True,
+                    'Wed 4 Nov · 2pm', 'Exeter', '14', 'I\'m going',
+                    '2026-11-04', 'var(--coral)',
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+    ]
+    body = ('<div class="content">'
+            '<div class="page-head"><div class="ey mono-eyebrow">Cardiff University sport</div>'
+            '<h1>BUCS fixtures</h1>'
+            '<div class="sub">British Universities &amp; Colleges Sport — the competition Cardiff University\'s 100+ student '
+            'teams play in. This is Cardiff University\'s own fixtures, not Cardiff Met\'s. Headline fixtures below are '
+            'Men\'s BUCS Super Rugby; see the '
+            '<a href="https://www.cardiffstudents.com/activities/au/bucs-fixtures/" target="_blank" rel="noopener" '
+            'style="color:var(--lime);font-weight:700">Athletic Union\'s full fixture list ↗</a> for all 34 sports clubs.</div></div>'
+            '<div class="chips"><div class="chip on">All</div><div class="chip">Home</div>'
+            '<div class="chip">Away</div><div class="chip">Rugby</div></div>'
+            '<div class="grid g3">%s</div></div>' % ''.join(fixtures))
+    return page('BUCS', 'bucs', body)
 
 # ================= PAGE: OPPORTUNITIES =================
 def opp_row(logo, bg, role, kind, org, verified, tags, closes):
@@ -364,9 +431,10 @@ def soc_card(emoji, bg, name, members, desc):
             '<div class="card-body"><h3>%s%s</h3>'
             '<div class="by">%s members</div>'
             '<p>%s</p>'
+            '<a class="ticket-link" href="%s" target="_blank" rel="noopener">How to join — Cardiff SU %s</a>'
             '<div class="card-foot"><span class="stat">Active this week</span>'
             '<button class="soc-join">Join</button></div></div></div>'
-            % (bg, emoji, name, VERIFY, members, desc))
+            % (bg, emoji, name, VERIFY, members, desc, SU_SOCIETIES_URL, ICONS['ext']))
 
 def build_societies():
     cards = [
@@ -380,35 +448,100 @@ def build_societies():
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Find your people</div>'
             '<h1>Societies</h1>'
-            '<div class="sub">300+ Cardiff societies, all in one place. Join in a tap and their events land straight in your feed.</div></div>'
+            '<div class="sub">300+ Cardiff societies, all in one place. Join in a tap here, or head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
             '<div class="chips"><div class="chip on">All</div><div class="chip">Sport</div>'
             '<div class="chip">Arts</div><div class="chip">Academic</div><div class="chip">Culture</div>'
             '<div class="chip">Volunteering</div><div class="chip">Social</div></div>'
             '<div class="grid g3">%s</div></div>' % ''.join(cards))
     return page('Societies', 'societies', body)
 
+# ================= PAGE: FLATMATES =================
+def flat_card(emoji, bg, area, title, poster, desc, price, available, spots):
+    return ('<div class="card"><div class="card-media" style="background:%s">'
+            '<span class="chip-cat">%s</span>'
+            '<button class="save-heart">%s</button>'
+            '<span class="emoji">%s</span></div>'
+            '<div class="card-body"><h3>%s</h3>'
+            '<div class="by">%s</div>'
+            '<p>%s</p>'
+            '<div class="card-info"><div class="bit">%s %s pcm</div><div class="bit">%s Available %s</div></div>'
+            '<div class="card-foot"><span class="stat">%s</span>'
+            '<button class="pill primary" data-rsvp="Message sent ✓">Message</button></div></div></div>'
+            % (bg, area, ICONS['heart'], emoji, title, poster, desc, ICONS['money'], price, ICONS['cal'],
+               available, spots))
+
+def build_flatmates():
+    post_cta = ('<div class="widget" style="display:flex;align-items:center;justify-content:space-between;'
+                'gap:16px;flex-wrap:wrap;margin-bottom:22px">'
+                '<div><h3 style="margin-bottom:4px">Got a spare room?</h3>'
+                '<div style="color:var(--muted);font-size:.85rem">Post your house — takes two minutes, free for students.</div></div>'
+                '<button class="pill primary">Post your room %s</button></div>' % ICONS['arrow'])
+    cards = [
+        flat_card('🏠', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Cathays',
+                   '4-bed house · 1 room free', 'Posted by Priya · 2nd year Biosciences',
+                   'Three of us are staying on for 2nd year — chill house, 5 min walk to the Bute Building. Looking for a 4th who\'s tidy-ish and up for a Sunday roast now and then.',
+                   '£450', 'July', '1 spot left'),
+        flat_card('🏡', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Roath',
+                   '5-bed house · 2 rooms free', 'Posted by Jack · 3rd year Economics',
+                   'Big Victorian terrace off Albany Road with a proper kitchen for house dinners. Two of our housemates are off on placement year so we\'ve got two rooms going.',
+                   '£480–520', 'September', '2 spots left'),
+        flat_card('🏘️', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Heath',
+                   '3-bed house · 1 room free', 'Posted by Sara · 2nd year Psychology',
+                   'Quiet street near Heath Park, good if you actually want to get work done. Two of us left in the house, looking for someone chilled.',
+                   '£520', 'September', '1 spot left'),
+        flat_card('🚲', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Gabalfa',
+                   '4-bed house · 1 room free', 'Posted by Tom · 2nd year Sport Science',
+                   'Sporty house, 10 min cycle to campus, garden for BBQs. One of the lads is off on a year abroad so his room\'s free.',
+                   '£420', 'September', '1 spot left'),
+        flat_card('🎨', 'linear-gradient(135deg,var(--lime),var(--coral))', 'Canton',
+                   '3-bed house · 1 room free', 'Posted by Elin · 3rd year Architecture',
+                   'Right by Chapter Arts Centre — good if you\'re into film or art. Laid-back house, we mostly do our own thing.',
+                   '£460', 'September', '1 spot left'),
+        flat_card('🌊', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Cardiff Bay',
+                   '4-bed house · 1 room free', 'Posted by Liam · 3rd year Law',
+                   'Quieter end of town — 20 min walk or one bus to campus. Good if you want some distance from the Cathays chaos.',
+                   '£500–540', 'September', '1 spot left'),
+    ]
+    body = ('<div class="content">'
+            '<div class="page-head"><div class="ey mono-eyebrow">Student housing</div>'
+            '<h1>Find a housemate</h1>'
+            '<div class="sub">Second and third years with a spare room, posted by the students who live there — not an agency, no fees. '
+            'Browse what\'s going, or list your own room.</div></div>'
+            '<div class="chips"><div class="chip on">All</div><div class="chip">Cathays</div>'
+            '<div class="chip">Roath</div><div class="chip">Heath</div><div class="chip">Gabalfa</div>'
+            '<div class="chip">Canton</div><div class="chip">Cardiff Bay</div><div class="chip">Under £450</div></div>'
+            '%s'
+            '<div class="grid g3">%s</div></div>' % (post_cta, ''.join(cards)))
+    return page('Find a housemate', 'flatmates', body)
+
 # ================= PAGE: MAP =================
-def venue_card(emoji, bg, cat, name, area, desc, lat, lng, going, ticket_url='', ticket_label=''):
-    color = going_color(going)
+def venue_card(emoji, bg, cat, name, area, desc, lat, lng, going, ticket_url='', ticket_label='', pin_color='',
+                fixture_date='', fixture_time=''):
+    is_fixture = bool(fixture_date)
+    color = pin_color or going_color(going)
+    going_label = 'going' if is_fixture else 'going tonight'
+    rsvp_label = "I'm going" if is_fixture else "I'm going tonight"
     search = ('%s %s %s %s' % (name, area, cat, desc)).lower()
     ticket_html = ''
     if ticket_url:
         ticket_html = ('<a class="ticket-link" href="%s" target="_blank" rel="noopener">%s %s</a>'
                         % (ticket_url, ticket_label, ICONS['ext']))
     return ('<div class="card venue-card" data-lat="%s" data-lng="%s" data-name="%s" data-cat="%s" '
-            'data-going="%s" data-search="%s" data-ticket-url="%s" data-ticket-label="%s">'
+            'data-area="%s" data-going="%s" data-search="%s" data-ticket-url="%s" data-ticket-label="%s" '
+            'data-pin-color="%s" data-fixture-date="%s" data-fixture-time="%s">'
             '<div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span><span class="emoji">%s</span></div>'
             '<div class="card-body"><h3>%s</h3><div class="by">%s</div><p>%s</p>%s'
             '<div class="card-foot"><span class="stat busy-badge">'
             '<i class="busy-dot" style="background:%s"></i>'
-            '<span class="going-count">%s</span> going tonight</span>'
+            '<span class="going-count">%s</span> %s</span>'
             '<div class="post-actions">'
             '<button class="pill locate-btn">Show on map %s</button>'
-            '<button class="pill primary venue-rsvp" data-rsvp="You\'re in 🎉">I\'m going tonight</button>'
+            '<button class="pill primary venue-rsvp" data-rsvp="You\'re in 🎉">%s</button>'
             '</div></div></div></div>'
-            % (lat, lng, name, cat, going, search, ticket_url, ticket_label, bg, cat, emoji, name, area, desc,
-               ticket_html, color, going, ICONS['pin']))
+            % (lat, lng, name, cat, area, going, search, ticket_url, ticket_label, pin_color, fixture_date,
+               fixture_time, bg, cat, emoji, name, area, desc, ticket_html, color, going, going_label,
+               ICONS['pin'], rsvp_label))
 
 def build_map():
     # Verified against current listings — closed venues (e.g. The Moon Club, shut Nov 2024) removed,
@@ -443,24 +576,33 @@ def build_map():
          'Craft beer bar opposite the stadium — 25 taps, big matchday crowd.', 51.4787, -3.1809, 12),
         ('🍷', 'linear-gradient(135deg,var(--coral),var(--lime))', 'Bar', 'The Owain Glyndŵr', 'St John Street',
          'Recently refurbished sports pub near the castle — 31 screens, always packed on match day.', 51.4813, -3.1800, 70),
+        ('🏉', 'linear-gradient(135deg,var(--sky),var(--lime))', 'BUCS', 'Cardiff University Sports Fields', 'Llanrumney',
+         'Cardiff University\'s BUCS home pitches — next up: Cardiff vs Hartpury (23 Sep) and Cardiff vs Nottingham (28 Oct).',
+         51.5180, -3.1270, 54,
+         'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', '#1E3A8A', '2026-09-23', '2:00pm'),
+        ('🏆', 'linear-gradient(135deg,var(--amber),var(--sky))', 'BUCS', 'Cardiff Arms Park', 'City Centre',
+         'The Cardiff Clash — Cardiff University vs Cardiff Met, BUCS Super Rugby\'s biggest derby. Past crowds have topped 4,000.',
+         51.4784, -3.1815, 340,
+         'https://www.bucs.org.uk/tickets.html', 'The Cardiff Clash — get tickets', '#1E3A8A', '2026-10-07', '7:30pm'),
     ]
     cards = ''.join(venue_card(*v) for v in venues)
     legend = ('<div class="busy-legend">'
               '<span class="lg"><i style="background:#2ED573"></i>Under 20 going</span>'
               '<span class="lg"><i style="background:#FFA502"></i>20–69 going</span>'
               '<span class="lg"><i style="background:#FF4757"></i>70+ going</span>'
+              '<span class="lg"><i style="background:#1E3A8A"></i>BUCS fixture</span>'
               '</div>')
     search_bar = ('<div class="map-search">%s'
                   '<input type="text" id="venueSearch" autocomplete="off" '
-                  'placeholder="Search clubs, bars &amp; the SU by name, area or vibe…">'
+                  'placeholder="Search clubs, bars, the SU &amp; BUCS fixtures by name, area or vibe…">'
                   '<span class="match-count" id="venueMatchCount"></span>'
                   '<button class="clear-search" id="venueSearchClear" aria-label="Clear search">%s</button></div>'
                   % (ICONS['search'], ICONS['close']))
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Night out sorted</div>'
-            '<h1>Clubs, bars &amp; the SU near campus</h1>'
-            '<div class="sub">Every club, bar and Students\' Union night students actually go to, pinned on the map — kept current, closed venues removed. Search to find one, tap a card to fly to it, or a pin to say you\'re going.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Student Union</div><div class="chip">Clubs</div><div class="chip">Bars</div></div>'
+            '<h1>Clubs, bars, the SU &amp; BUCS near campus</h1>'
+            '<div class="sub">Every club, bar, Students\' Union night and BUCS fixture students actually go to, pinned on the map — kept current, closed venues removed. Search to find one, tap a card to fly to it, or a pin to say you\'re going.</div></div>'
+            '<div class="chips"><div class="chip on">All</div><div class="chip">Student Union</div><div class="chip">Clubs</div><div class="chip">Bars</div><div class="chip">BUCS</div></div>'
             '<div class="widget map-widget"><div id="venueMap"></div></div>'
             '%s%s'
             '<div class="grid g3" id="venueGrid">%s</div>'
@@ -469,6 +611,18 @@ def build_map():
     return page('Map', 'map', body, extra_head=LEAFLET_CSS, extra_scripts=LEAFLET_JS)
 
 # ================= PAGE: PROFILE / JOURNEY =================
+def calendar_widget():
+    return ('<div class="widget cal-widget"><div class="widget-head">'
+            '<h3>My calendar</h3>'
+            '<div class="cal-nav"><button class="cal-nav-btn" id="calPrev" aria-label="Previous month">‹</button>'
+            '<span class="cal-month-label" id="calMonthLabel"></span>'
+            '<button class="cal-nav-btn" id="calNext" aria-label="Next month">›</button></div></div>'
+            '<div class="cal-grid" id="calGrid"></div>'
+            '<div class="cal-day-detail" id="calDayDetail" hidden>'
+            '<h4 id="calDayDetailTitle"></h4><div class="cal-day-events" id="calDayEvents"></div></div>'
+            '<div class="cal-foot-note mono-eyebrow">Everything you RSVP to across Uni-Verse lands here automatically</div>'
+            '</div>')
+
 def build_profile():
     stat_strip = ('<div class="stat-strip">'
                   '<div class="stat-box"><div class="big">3</div><div class="lbl">Societies joined</div></div>'
@@ -493,8 +647,8 @@ def build_profile():
                      '<div style="color:var(--muted);font-size:.78rem">%s</div></div></div>' % (cls, box, txt, sub))
     left = ('<div class="feed-col">'
             '<div class="page-head" style="display:flex;align-items:center;gap:16px">'
-            '<div class="rail-avatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">MW</div>'
-            '<div><h1 style="margin-bottom:4px">Murray Wyatt</h1>'
+            '<div class="rail-avatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">FW</div>'
+            '<div><h1 style="margin-bottom:4px">Findlay Wyatt</h1>'
             '<div class="sub">1st year · Computer Science · Cardiff University</div></div></div>'
             + stat_strip +
             '<div class="widget"><div class="widget-head"><h3>Your uni journey</h3>'
@@ -508,7 +662,8 @@ def build_profile():
             '<div class="dsc">Every goal you tick is a thing you won\'t look back and wish you\'d done.</div></div></div>'
             '<div class="prog-steps">%s</div></div></div>' % ''.join(grows))
     right = ('<aside class="side-col">%s%s</aside>' % (sidebar_ai(), sidebar_week()))
-    body = '<div class="content two-col">%s%s</div>' % (left, right)
+    body = ('<div class="content"><div class="two-col">%s%s</div>%s</div>'
+            % (left, right, calendar_widget()))
     return page('Your journey', 'profile', body)
 
 # ================= PAGE: AI CHAT =================
@@ -527,8 +682,8 @@ def build_ai():
             '<div><h1>Ask Uni-Verse</h1><div class="csub">YOUR CARDIFF GUIDE</div></div></div>'
             '<div class="chat-body">'
             '<div class="msg ai-msg"><div class="m-ava">UV</div>'
-            '<div class="m-bubble">Hey Murray 👋 I\'m your Cardiff guide. Tell me what you want to get out of uni — a career direction, new people, something to do this weekend — and I\'ll point you at the events, societies and opportunities that get you there.</div></div>'
-            '<div class="msg user-msg"><div class="m-ava">MW</div>'
+            '<div class="m-bubble">Hey Findlay 👋 I\'m your Cardiff guide. Tell me what you want to get out of uni — a career direction, new people, something to do this weekend — and I\'ll point you at the events, societies and opportunities that get you there.</div></div>'
+            '<div class="msg user-msg"><div class="m-ava">FW</div>'
             '<div class="m-bubble">I want to break into tech but I\'m a shy first year and don\'t know where to start.</div></div>'
             '<div class="msg ai-msg"><div class="m-ava">UV</div>'
             '<div class="m-bubble">Totally normal — loads of people feel that in first year. The trick is small, low-pressure steps. Here\'s where I\'d start, all beginner-friendly:'
@@ -609,10 +764,12 @@ def build_landing():
 pages = {
     'index.html': build_feed(),
     'events.html': build_events(),
+    'bucs.html': build_bucs(),
     'opportunities.html': build_opps(),
     'discounts.html': build_discounts(),
     'map.html': build_map(),
     'societies.html': build_societies(),
+    'flatmates.html': build_flatmates(),
     'profile.html': build_profile(),
     'ai.html': build_ai(),
     'landing.html': build_landing(),
