@@ -35,7 +35,16 @@ ICONS = {
     'palette': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="2.5" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="2.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="2.5" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="2.5" fill="currentColor" stroke="none"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 000 20 2.5 2.5 0 002-4 2 2 0 011.7-3.2H18a4 4 0 004-4 10 10 0 00-10-9z"/></svg>',
     'check': '<svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>',
     'map': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M1 6l7-3 8 3 7-3v15l-7 3-8-3-7 3V6z"/><path stroke-linecap="round" d="M8 3v15M16 6v15"/></svg>',
+    'close': '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>',
 }
+
+# Pin/badge colour by exact "going" count — green under 20, orange 20-69, red 70+
+def going_color(n):
+    if n < 20:
+        return '#2ED573'
+    if n < 70:
+        return '#FFA502'
+    return '#FF4757'
 
 NAV = [
     ('index.html', 'feed', 'Feed'),
@@ -379,42 +388,84 @@ def build_societies():
     return page('Societies', 'societies', body)
 
 # ================= PAGE: MAP =================
-def venue_card(emoji, bg, cat, name, area, desc, lat, lng):
-    return ('<div class="card venue-card" data-lat="%s" data-lng="%s" data-name="%s">'
+def venue_card(emoji, bg, cat, name, area, desc, lat, lng, going, ticket_url='', ticket_label=''):
+    color = going_color(going)
+    search = ('%s %s %s %s' % (name, area, cat, desc)).lower()
+    ticket_html = ''
+    if ticket_url:
+        ticket_html = ('<a class="ticket-link" href="%s" target="_blank" rel="noopener">%s %s</a>'
+                        % (ticket_url, ticket_label, ICONS['ext']))
+    return ('<div class="card venue-card" data-lat="%s" data-lng="%s" data-name="%s" data-cat="%s" '
+            'data-going="%s" data-search="%s" data-ticket-url="%s" data-ticket-label="%s">'
             '<div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span><span class="emoji">%s</span></div>'
-            '<div class="card-body"><h3>%s</h3><div class="by">%s</div><p>%s</p>'
-            '<div class="card-foot"><span class="stat">%s</span>'
-            '<button class="pill primary locate-btn">Show on map %s</button></div></div></div>'
-            % (lat, lng, name, bg, cat, emoji, name, area, desc, cat, ICONS['pin']))
+            '<div class="card-body"><h3>%s</h3><div class="by">%s</div><p>%s</p>%s'
+            '<div class="card-foot"><span class="stat busy-badge">'
+            '<i class="busy-dot" style="background:%s"></i>'
+            '<span class="going-count">%s</span> going tonight</span>'
+            '<div class="post-actions">'
+            '<button class="pill locate-btn">Show on map %s</button>'
+            '<button class="pill primary venue-rsvp" data-rsvp="You\'re in 🎉">I\'m going tonight</button>'
+            '</div></div></div></div>'
+            % (lat, lng, name, cat, going, search, ticket_url, ticket_label, bg, cat, emoji, name, area, desc,
+               ticket_html, color, going, ICONS['pin']))
 
 def build_map():
+    # Verified against current listings — closed venues (e.g. The Moon Club, shut Nov 2024) removed,
+    # renamed ones updated (PRYZM → Circuit), and the SU's own nightclub added.
     venues = [
+        ('🎓', 'linear-gradient(135deg,var(--lime),var(--coral))', 'Student Union', "Y Plas — Cardiff SU", 'Park Place',
+         "The Students' Union's own nightclub — home to YOLO, Cardiff's biggest weekly student night. Links up with the Great Hall for a 4,000-capacity superclub on big nights.", 51.4874, -3.1783, 180,
+         'https://www.ents24.com/cardiff-events/cardiff-university-su-the-great-hall-solus-cf10-the-taf-y-plas', 'YOLO — get tickets'),
+        ('🎉', 'linear-gradient(135deg,var(--amber),var(--lime))', 'Club', 'Misfits Social Club', 'Miskin Street',
+         "An independent grassroots venue a stone's throw from the SU — not part of it, just next door. Live music, street food and cheap drinks 'til 3am, in the old Koko Gorillaz building.", 51.4839, -3.1785, 64,
+         'https://www.skiddle.com/whats-on/Cardiff/Misfits-Social-Club/', "What's on — get tickets"),
         ('🎶', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Club', 'Clwb Ifor Bach', 'Womanby Street',
-         "Cardiff's legendary indie &amp; alt club — three floors, gigs most nights.", 51.4816, -3.1811),
-        ('🪩', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Club', 'PRYZM Cardiff', 'Greyfriars Road',
-         'Big-room clubbing — the go-to for student nights out.', 51.4795, -3.1774),
-        ('🤘', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Club', 'The Moon Club', 'Womanby Street',
-         "Rock, metal and alt club nights on Cardiff's music street.", 51.4813, -3.1815),
-        ('🎸', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Club', 'Fuel Rock Club', 'Windsor Place',
-         "Two floors of rock, punk and metal — Cardiff's heaviest night out.", 51.4816, -3.1751),
+         "Cardiff's best-loved indie &amp; alt club — three floors, gigs most nights.", 51.4816, -3.1811, 76,
+         'https://clwb.net/whats-on/', "Tonight's gig — get tickets"),
+        ('🪩', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Club', 'Circuit', 'Greyfriars Road',
+         'Big-room commercial club — house, pop and chart anthems, on the old PRYZM site.', 51.4795, -3.1774, 95,
+         'https://circuitclub.co.uk/cardiff/whats-on/', "Tonight's line-up — get tickets"),
+        ('🤘', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Club', 'Fuel Rock Club', 'Womanby Street',
+         "Cardiff's only dedicated rock &amp; metal club — gigs out back, discos 'til late Fri &amp; Sat.", 51.4809, -3.1813, 41,
+         'https://www.fuelrockclub.co.uk/', 'Rock & metal disco — get tickets'),
+        ('🕺', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Club', 'Metros', 'Bakers Row',
+         'Backstreet basement club running alt &amp; indie nights for over 20 years.', 51.4785, -3.1770, 34,
+         'https://www.fatsoma.com/p/metros---cardiff', 'Alt night — get tickets'),
+        ('🎤', 'linear-gradient(135deg,var(--lime),var(--amber))', 'Club', 'Popworld Cardiff', 'St Mary Street',
+         "Cheesy pop, karaoke and half-price drinks — dance floor anthems 'til 3am.", 51.4783, -3.1776, 52,
+         'https://www.popworldparty.co.uk/cardiff', 'Karaoke & pop night — get tickets'),
         ('🍻', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Bar', 'The Woodville', 'Cathays',
-         'Classic student pub two minutes from halls — quiz nights, sport, cheap pints.', 51.4913, -3.1815),
-        ('🍸', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Bar', 'Dead Canary', 'High Street Arcade',
-         'Speakeasy-style cocktail bar tucked in the arcades.', 51.4816, -3.1785),
+         'Classic student pub two minutes from halls — beer garden, sport, cheap pints.', 51.4913, -3.1815, 15),
+        ('🍸', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Bar', 'Dead Canary', 'Charles Street',
+         'Ring the bell to get in — secret cocktail bar with lab-made drinks in a Grade II building.', 51.4762, -3.1763, 28),
         ('🍺', 'linear-gradient(135deg,var(--amber),var(--sky))', 'Bar', 'BrewDog Cardiff', 'Westgate Street',
-         'Craft beer bar opposite the stadium — big matchday crowd.', 51.4787, -3.1809),
+         'Craft beer bar opposite the stadium — 25 taps, big matchday crowd.', 51.4787, -3.1809, 12),
         ('🍷', 'linear-gradient(135deg,var(--coral),var(--lime))', 'Bar', 'The Owain Glyndŵr', 'St John Street',
-         'Wetherspoons in an old church — student-priced, always packed.', 51.4813, -3.1800),
+         'Recently refurbished sports pub near the castle — 31 screens, always packed on match day.', 51.4813, -3.1800, 70),
     ]
     cards = ''.join(venue_card(*v) for v in venues)
+    legend = ('<div class="busy-legend">'
+              '<span class="lg"><i style="background:#2ED573"></i>Under 20 going</span>'
+              '<span class="lg"><i style="background:#FFA502"></i>20–69 going</span>'
+              '<span class="lg"><i style="background:#FF4757"></i>70+ going</span>'
+              '</div>')
+    search_bar = ('<div class="map-search">%s'
+                  '<input type="text" id="venueSearch" autocomplete="off" '
+                  'placeholder="Search clubs, bars &amp; the SU by name, area or vibe…">'
+                  '<span class="match-count" id="venueMatchCount"></span>'
+                  '<button class="clear-search" id="venueSearchClear" aria-label="Clear search">%s</button></div>'
+                  % (ICONS['search'], ICONS['close']))
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Night out sorted</div>'
-            '<h1>Clubs &amp; bars near campus</h1>'
-            '<div class="sub">Every club and bar students actually go to, pinned on the map. Tap a card to fly to it, or a pin to see what it is.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Clubs</div><div class="chip">Bars</div></div>'
+            '<h1>Clubs, bars &amp; the SU near campus</h1>'
+            '<div class="sub">Every club, bar and Students\' Union night students actually go to, pinned on the map — kept current, closed venues removed. Search to find one, tap a card to fly to it, or a pin to say you\'re going.</div></div>'
+            '<div class="chips"><div class="chip on">All</div><div class="chip">Student Union</div><div class="chip">Clubs</div><div class="chip">Bars</div></div>'
             '<div class="widget map-widget"><div id="venueMap"></div></div>'
-            '<div class="grid g3">%s</div></div>' % cards)
+            '%s%s'
+            '<div class="grid g3" id="venueGrid">%s</div>'
+            '<div class="empty-state" id="venueEmpty" hidden>No venues match “<span id="venueEmptyQuery"></span>”.</div>'
+            '</div>' % (search_bar, legend, cards))
     return page('Map', 'map', body, extra_head=LEAFLET_CSS, extra_scripts=LEAFLET_JS)
 
 # ================= PAGE: PROFILE / JOURNEY =================

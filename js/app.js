@@ -83,23 +83,149 @@
     // ---- venue map (clubs & bars) ----
     var mapEl = document.getElementById('venueMap');
     if (mapEl && window.L) {
-      var venueMap = L.map('venueMap', { scrollWheelZoom: false }).setView([51.4855, -3.1795], 14.5);
+      var defaultCenter = [51.4855, -3.1795], defaultZoom = 14.5;
+      var venueMap = L.map('venueMap', { scrollWheelZoom: false }).setView(defaultCenter, defaultZoom);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
       }).addTo(venueMap);
+
+      // "I'm going tonight" state per venue, remembered for the session
+      function goingKey(name) { return 'uv-going-' + name; }
+      function isGoing(name) {
+        try { return window.sessionStorage.getItem(goingKey(name)) === '1'; } catch (e) { return false; }
+      }
+      function setGoing(name) {
+        try { window.sessionStorage.setItem(goingKey(name), '1'); } catch (e) {}
+      }
+
+      // pin/badge colour by exact going count — green under 20, orange 20-69, red 70+
+      function goingColor(n) {
+        if (n < 20) return '#2ED573';
+        if (n < 70) return '#FFA502';
+        return '#FF4757';
+      }
+
+      // colour-coded teardrop pin
+      function pinIcon(color) {
+        var svg = '<svg width="28" height="40" viewBox="0 0 28 40" xmlns="http://www.w3.org/2000/svg">'
+          + '<path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.3 21.7 0 14 0z" fill="' + color + '"/>'
+          + '<circle cx="14" cy="14" r="5.5" fill="#fff"/></svg>';
+        return L.divIcon({ html: svg, className: 'venue-pin', iconSize: [28, 40], iconAnchor: [14, 40], popupAnchor: [0, -36] });
+      }
+
+      var venues = [];
       document.querySelectorAll('.venue-card').forEach(function (card) {
-        var lat = parseFloat(card.dataset.lat), lng = parseFloat(card.dataset.lng), name = card.dataset.name;
+        var lat = parseFloat(card.dataset.lat), lng = parseFloat(card.dataset.lng);
+        var name = card.dataset.name, cat = card.dataset.cat;
+        var baseGoing = parseInt(card.dataset.going, 10) || 0;
+        var ticketUrl = card.dataset.ticketUrl, ticketLabel = card.dataset.ticketLabel;
         if (isNaN(lat) || isNaN(lng)) return;
-        var marker = L.marker([lat, lng]).addTo(venueMap).bindPopup('<strong>' + name + '</strong>');
-        var btn = card.querySelector('.locate-btn');
-        if (btn) {
-          btn.addEventListener('click', function () {
+
+        function currentCount() { return baseGoing + (isGoing(name) ? 1 : 0); }
+
+        function popupHtml() {
+          var going = isGoing(name), count = currentCount();
+          var ticketHtml = ticketUrl
+            ? '<a class="popup-tickets" href="' + ticketUrl + '" target="_blank" rel="noopener">' + ticketLabel + ' ↗</a>'
+            : '';
+          return '<strong>' + name + '</strong><span class="popup-cat">' + cat + '</span>'
+            + '<div class="popup-going"><i class="busy-dot" style="background:' + goingColor(count) + '"></i>' + count + ' going tonight</div>'
+            + ticketHtml
+            + '<button class="pill primary popup-rsvp"' + (going ? ' disabled' : '') + '>'
+            + (going ? "You're in 🎉" : "I'm going tonight") + '</button>';
+        }
+
+        var marker = L.marker([lat, lng], { icon: pinIcon(goingColor(currentCount())) }).addTo(venueMap).bindPopup(popupHtml());
+
+        var cardBtn = card.querySelector('.venue-rsvp');
+        var dotEl = card.querySelector('.busy-dot');
+        var numEl = card.querySelector('.going-count');
+
+        function refreshUI() {
+          var count = currentCount(), color = goingColor(count);
+          marker.setIcon(pinIcon(color));
+          marker.setPopupContent(popupHtml());
+          if (dotEl) dotEl.style.background = color;
+          if (numEl) numEl.textContent = count;
+        }
+
+        marker.on('popupopen', function (e) {
+          var popupBtn = e.popup.getElement().querySelector('.popup-rsvp');
+          if (popupBtn && !popupBtn.disabled) {
+            popupBtn.addEventListener('click', function () {
+              setGoing(name);
+              refreshUI();
+              syncCardButton();
+            });
+          }
+        });
+
+        var locateBtn = card.querySelector('.locate-btn');
+        if (locateBtn) {
+          locateBtn.addEventListener('click', function () {
             venueMap.flyTo([lat, lng], 17);
             marker.openPopup();
           });
         }
+
+        function syncCardButton() {
+          if (cardBtn && isGoing(name)) {
+            cardBtn.dataset.done = '1';
+            cardBtn.textContent = cardBtn.dataset.rsvp;
+          }
+        }
+        syncCardButton();
+        if (cardBtn) {
+          cardBtn.addEventListener('click', function () {
+            setGoing(name);
+            refreshUI();
+          });
+        }
+
+        venues.push({ card: card, marker: marker, lat: lat, lng: lng, search: card.dataset.search || '' });
       });
+
+      // ---- search: filters cards + pins together, zooms the map to the matches ----
+      var searchInput = document.getElementById('venueSearch');
+      var clearBtn = document.getElementById('venueSearchClear');
+      var matchCount = document.getElementById('venueMatchCount');
+      var emptyState = document.getElementById('venueEmpty');
+      var emptyQuery = document.getElementById('venueEmptyQuery');
+
+      function runSearch() {
+        var q = (searchInput.value || '').trim().toLowerCase();
+        if (clearBtn) clearBtn.classList.toggle('show', q.length > 0);
+        var visible = [];
+        venues.forEach(function (v) {
+          var match = !q || v.search.indexOf(q) !== -1;
+          v.card.hidden = !match;
+          if (match) {
+            if (!venueMap.hasLayer(v.marker)) v.marker.addTo(venueMap);
+            visible.push(v);
+          } else if (venueMap.hasLayer(v.marker)) {
+            venueMap.removeLayer(v.marker);
+          }
+        });
+        if (matchCount) matchCount.textContent = q ? (visible.length + (visible.length === 1 ? ' match' : ' matches')) : '';
+        if (emptyState) emptyState.hidden = visible.length > 0;
+        if (emptyQuery) emptyQuery.textContent = searchInput.value.trim();
+        if (q && visible.length) {
+          venueMap.flyToBounds(L.latLngBounds(visible.map(function (v) { return [v.lat, v.lng]; })), { padding: [50, 50], maxZoom: 16 });
+        } else if (!q) {
+          venueMap.flyTo(defaultCenter, defaultZoom);
+        }
+      }
+      if (searchInput) {
+        searchInput.addEventListener('input', runSearch);
+        if (clearBtn) {
+          clearBtn.addEventListener('click', function () {
+            searchInput.value = '';
+            runSearch();
+            searchInput.focus();
+          });
+        }
+      }
     }
 
     // ---- chat: click suggestion or send ----

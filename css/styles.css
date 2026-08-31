@@ -274,9 +274,43 @@ footer .mono-eyebrow{color:var(--muted)}
 /* ---------- VENUE MAP (Leaflet) ---------- */
 .map-widget{padding:0;overflow:hidden;margin-bottom:22px}
 #venueMap{height:520px;width:100%;background:var(--ink-2)}
-.venue-card .card-foot{align-items:center}
+.venue-card .card-foot{flex-direction:column;align-items:stretch;gap:10px}
+.venue-card .post-actions{display:flex;gap:8px}
+.venue-card .post-actions .pill{flex:1;justify-content:center}
+.venue-card[hidden]{display:none}
+.busy-badge{display:flex;align-items:center;gap:7px}
+.ticket-link{display:inline-flex;align-items:center;gap:6px;color:var(--sky);font-weight:700;font-size:.82rem;text-decoration:none;margin-top:-4px}
+.ticket-link:hover{text-decoration:underline}
+.ticket-link svg{width:13px;height:13px}
+.busy-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.venue-pin{background:none;border:none}
+.venue-pin svg{display:block}
+
+/* search bar between the map and the venue grid */
+.map-search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 6px 4px 16px;margin-bottom:14px;transition:.16s}
+.map-search:focus-within{border-color:var(--lime)}
+.map-search>svg{width:18px;height:18px;color:var(--muted);flex-shrink:0}
+.map-search input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-family:'Archivo';font-size:.94rem;padding:12px 4px}
+.map-search input::placeholder{color:var(--muted)}
+.match-count{color:var(--muted);font-size:.78rem;font-weight:600;white-space:nowrap}
+.clear-search{width:34px;height:34px;border-radius:10px;border:none;background:transparent;color:var(--muted);display:none;place-items:center;cursor:pointer;flex-shrink:0}
+.clear-search:hover{color:var(--text);background:var(--card-2)}
+.clear-search.show{display:grid}
+.clear-search svg{width:16px;height:16px}
+
+.busy-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:22px;color:var(--muted);font-size:.78rem;font-weight:600}
+.busy-legend .lg{display:flex;align-items:center;gap:6px}
+.busy-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+.empty-state{padding:36px 20px;text-align:center;color:var(--muted);background:var(--card);border:1px dashed var(--line-2);border-radius:16px;font-size:.9rem}
 .leaflet-popup-content-wrapper{background:var(--card);color:var(--text);border-radius:12px;box-shadow:0 14px 44px rgba(0,0,0,.45)}
-.leaflet-popup-content{font-family:'Archivo',system-ui,sans-serif;font-weight:700;font-size:.85rem;margin:10px 14px}
+.leaflet-popup-content{font-family:'Archivo',system-ui,sans-serif;font-weight:700;font-size:.85rem;margin:10px 14px;min-width:170px}
+.leaflet-popup-content .popup-cat{display:block;color:var(--muted);font-weight:600;font-size:.72rem;margin-top:2px}
+.leaflet-popup-content .popup-going{display:flex;align-items:center;gap:7px;color:var(--muted);font-weight:600;font-size:.76rem;margin-top:8px}
+.leaflet-popup-content .popup-tickets{display:flex;align-items:center;gap:5px;color:var(--sky);font-weight:700;font-size:.78rem;margin-top:8px;text-decoration:none}
+.leaflet-popup-content .popup-tickets:hover{text-decoration:underline}
+.leaflet-popup-content .popup-rsvp{margin-top:10px;width:100%;justify-content:center}
+.leaflet-popup-content .popup-rsvp[disabled]{opacity:.75;cursor:default}
 .leaflet-popup-tip{background:var(--card)}
 .leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
 .leaflet-control-zoom a{background:var(--card) !important;color:var(--text) !important;border-color:var(--line-2) !important}
