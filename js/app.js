@@ -31,6 +31,14 @@
     }
   }
 
+  // ---- RSVP persistence: remembers a clicked [data-rsvp] button across reloads ----
+  function isRsvpDone(key) {
+    try { return window.localStorage.getItem('uv-rsvp-' + key) === '1'; } catch (e) { return false; }
+  }
+  function setRsvpDone(key) {
+    try { window.localStorage.setItem('uv-rsvp-' + key, '1'); } catch (e) {}
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     // ---- theme switcher ----
     var fab = document.getElementById('themeFab');
@@ -54,12 +62,58 @@
       markActiveTheme();
     }
 
+    // ---- sitewide search (topbar, every page) ----
+    var topSearchInput = document.getElementById('topSearchInput');
+    var topSearchResults = document.getElementById('topSearchResults');
+    if (topSearchInput && topSearchResults && window.UV_SEARCH) {
+      var lastMatches = [];
+      function runTopSearch() {
+        var q = topSearchInput.value.trim().toLowerCase();
+        if (!q) { topSearchResults.hidden = true; topSearchResults.innerHTML = ''; lastMatches = []; return; }
+        lastMatches = window.UV_SEARCH.filter(function (item) {
+          return (item.t + ' ' + item.c + ' ' + (item.d || '')).toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 8);
+        if (!lastMatches.length) {
+          topSearchResults.innerHTML = '<div class="search-empty">No results</div>';
+        } else {
+          topSearchResults.innerHTML = lastMatches.map(function (m) {
+            return '<a class="search-result" href="' + m.u + '">'
+              + '<div><div class="sr-title">' + m.t + '</div>'
+              + (m.d ? '<div class="sr-meta">' + m.d + '</div>' : '') + '</div>'
+              + '<span class="sr-cat">' + m.c + '</span></a>';
+          }).join('');
+        }
+        topSearchResults.hidden = false;
+      }
+      topSearchInput.addEventListener('input', runTopSearch);
+      topSearchInput.addEventListener('focus', function () { if (topSearchInput.value.trim()) runTopSearch(); });
+      topSearchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && lastMatches.length) window.location.href = lastMatches[0].u;
+        if (e.key === 'Escape') { topSearchResults.hidden = true; topSearchInput.blur(); }
+      });
+      document.addEventListener('click', function (e) {
+        if (!topSearchResults.contains(e.target) && e.target !== topSearchInput) topSearchResults.hidden = true;
+      });
+    }
+
     // ---- filter chips ----
+    // Mostly decorative (visual toggle only). The one exception: a "Freshers Week"
+    // chip actually filters its grid down to freshers-tagged cards, when present.
+    // Grid is found via an explicit data-filter-grid id when set (robust), falling
+    // back to "whatever follows the chips" for the purely-decorative rows elsewhere.
     document.querySelectorAll('.chips').forEach(function (group) {
+      var grid = group.dataset.filterGrid ? document.getElementById(group.dataset.filterGrid) : group.nextElementSibling;
+      var hasFreshersCards = grid && grid.querySelector && grid.querySelector('[data-freshers]');
       group.querySelectorAll('.chip').forEach(function (c) {
         c.addEventListener('click', function () {
           group.querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); });
           c.classList.add('on');
+          if (hasFreshersCards) {
+            var wantFreshers = c.classList.contains('freshers-chip');
+            grid.querySelectorAll('.card').forEach(function (card) {
+              card.hidden = wantFreshers && !card.hasAttribute('data-freshers');
+            });
+          }
         });
       });
     });
@@ -73,11 +127,24 @@
     });
 
     // ---- RSVP / action button feedback ----
+    // Remembers itself across reloads: buttons tied to a calendar entry key off
+    // title+date (matching the calendar's own id), others use an explicit
+    // data-rsvp-key. Buttons with neither (e.g. venue/society ones, which have
+    // their own dedicated persistence already) just keep today's session-only feel.
     document.querySelectorAll('[data-rsvp]').forEach(function (btn) {
+      var key = btn.dataset.rsvpKey
+        || (btn.dataset.calTitle && btn.dataset.calDate ? btn.dataset.calTitle + '|' + btn.dataset.calDate : null);
+
+      if (key && isRsvpDone(key)) {
+        btn.dataset.done = '1';
+        btn.textContent = btn.dataset.rsvp;
+      }
+
       btn.addEventListener('click', function () {
         if (btn.dataset.done === '1') return;
         btn.dataset.done = '1';
         btn.textContent = btn.dataset.rsvp;
+        if (key) setRsvpDone(key);
         if (btn.dataset.calTitle && btn.dataset.calDate) {
           addToCalendar({
             id: btn.dataset.calTitle + '|' + btn.dataset.calDate,
@@ -100,12 +167,70 @@
     });
 
     // ---- join buttons (societies) ----
+    // Cards on the Societies grid carry data-society and unlock a "View society" link
+    // once the (simulated) host accepts the request. The Feed's small "trending
+    // societies" widget has no data-society — those just toggle Join/Joined.
+    function isSocietyJoined(slug) {
+      try { return window.localStorage.getItem('uv-joined-' + slug) === '1'; } catch (e) { return false; }
+    }
+    function setSocietyJoined(slug) {
+      try { window.localStorage.setItem('uv-joined-' + slug, '1'); } catch (e) {}
+    }
     document.querySelectorAll('.soc-join').forEach(function (b) {
+      var slug = b.dataset.society;
+      var viewLink = b.parentElement ? b.parentElement.querySelector('.soc-view') : null;
+
+      if (slug && isSocietyJoined(slug)) {
+        b.classList.add('joined');
+        b.textContent = 'Joined ✓';
+        if (viewLink) viewLink.hidden = false;
+      }
+
       b.addEventListener('click', function () {
-        b.classList.toggle('joined');
-        b.textContent = b.classList.contains('joined') ? 'Joined' : 'Join';
+        if (!slug) {
+          // trending-societies widget: simple toggle, no approval flow
+          b.classList.toggle('joined');
+          b.textContent = b.classList.contains('joined') ? 'Joined' : 'Join';
+          return;
+        }
+        if (b.classList.contains('joined') || b.classList.contains('pending')) return;
+        b.classList.add('pending');
+        b.textContent = 'Requesting…';
+        setTimeout(function () {
+          b.classList.remove('pending');
+          b.classList.add('joined');
+          b.textContent = 'Joined ✓';
+          setSocietyJoined(slug);
+          if (viewLink) viewLink.hidden = false;
+        }, 1400);
       });
     });
+
+    // ---- society chat: post your own message into the group thread ----
+    var socChatInput = document.querySelector('.soc-chat-field');
+    var socChatBody = document.querySelector('.soc-chat');
+    function sendSocietyChat(text) {
+      if (!text || !socChatBody) return;
+      var m = document.createElement('div');
+      m.className = 'soc-msg self';
+      m.innerHTML = '<div class="soc-msg-ava" style="background:var(--lime);color:var(--ink)">FW</div>'
+        + '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">You</span>'
+        + '<span class="soc-msg-time">Just now</span></div><div class="soc-msg-text">' + text + '</div></div>';
+      socChatBody.appendChild(m);
+      socChatBody.scrollTop = socChatBody.scrollHeight;
+    }
+    if (socChatInput) {
+      var socChatSend = document.querySelector('.soc-chat-send');
+      socChatInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { sendSocietyChat(socChatInput.value.trim()); socChatInput.value = ''; }
+      });
+      if (socChatSend) {
+        socChatSend.addEventListener('click', function () {
+          sendSocietyChat(socChatInput.value.trim());
+          socChatInput.value = '';
+        });
+      }
+    }
 
     // ---- venue map (clubs & bars) ----
     var mapEl = document.getElementById('venueMap');
@@ -274,6 +399,20 @@
       }
     }
 
+    // ---- profile stat strip: numbers respond to real joins/RSVPs, on top of the starting baseline ----
+    var statSocieties = document.getElementById('statSocieties');
+    if (statSocieties) {
+      var joinedCount = 0;
+      try { joinedCount = Object.keys(window.localStorage).filter(function (k) { return k.indexOf('uv-joined-') === 0; }).length; } catch (e) {}
+      statSocieties.textContent = (parseInt(statSocieties.dataset.baseline, 10) || 0) + joinedCount;
+    }
+    var statEvents = document.getElementById('statEvents');
+    if (statEvents) {
+      var calCount = 0;
+      try { calCount = (JSON.parse(window.localStorage.getItem('uv-calendar')) || []).length; } catch (e) {}
+      statEvents.textContent = (parseInt(statEvents.dataset.baseline, 10) || 0) + calCount;
+    }
+
     // ---- my calendar (profile page) — month grid built from everything RSVP'd across the site ----
     var calGrid = document.getElementById('calGrid');
     if (calGrid) {
@@ -359,6 +498,112 @@
 
       renderCalendar();
       showDayDetail(selectedDate);
+
+      // ---- add your own event ----
+      var calAddBtn = document.getElementById('calAddBtn');
+      var calAddForm = document.getElementById('calAddForm');
+      if (calAddBtn && calAddForm) {
+        calAddBtn.addEventListener('click', function () { calAddForm.hidden = !calAddForm.hidden; });
+
+        var cancelBtn = document.getElementById('calCancelBtn');
+        if (cancelBtn) cancelBtn.addEventListener('click', function () { calAddForm.hidden = true; });
+
+        var selectedColor = 'var(--lime)';
+        document.querySelectorAll('.cal-color-swatch').forEach(function (sw) {
+          sw.addEventListener('click', function () {
+            document.querySelectorAll('.cal-color-swatch').forEach(function (s) { s.classList.remove('active'); });
+            sw.classList.add('active');
+            selectedColor = sw.dataset.color;
+          });
+        });
+
+        var saveBtn = document.getElementById('calSaveBtn');
+        var formError = document.getElementById('calFormError');
+        if (saveBtn) {
+          saveBtn.addEventListener('click', function () {
+            var titleInput = document.getElementById('calFTitle');
+            var dateInput = document.getElementById('calFDate');
+            var timeInput = document.getElementById('calFTime');
+            var placeInput = document.getElementById('calFPlace');
+            var title = titleInput.value.trim(), date = dateInput.value;
+            if (!title || !date) {
+              if (formError) formError.hidden = false;
+              return;
+            }
+            if (formError) formError.hidden = true;
+            addToCalendar({
+              id: 'custom-' + Date.now(),
+              title: title, date: date, time: timeInput.value.trim(),
+              place: placeInput.value.trim(), color: selectedColor
+            });
+            titleInput.value = ''; dateInput.value = ''; timeInput.value = ''; placeInput.value = '';
+            calAddForm.hidden = true;
+            var parts = date.split('-');
+            viewYear = parseInt(parts[0], 10);
+            viewMonth = parseInt(parts[1], 10) - 1;
+            selectedDate = date;
+            renderCalendar();
+            showDayDetail(date);
+          });
+        }
+      }
+    }
+
+    // ---- messages inbox ----
+    var msgThreadsEl = document.querySelector('.msg-threads');
+    if (msgThreadsEl) {
+      var convBody = document.getElementById('msgConvBody');
+      var convName = document.getElementById('msgConvName');
+      var convSub = document.getElementById('msgConvSub');
+      var convAva = document.getElementById('msgConvAva');
+
+      function renderThread(el) {
+        msgThreadsEl.querySelectorAll('.msg-thread').forEach(function (t) { t.classList.remove('active'); });
+        el.classList.add('active');
+        var dot = el.querySelector('.msg-unread-dot');
+        if (dot) dot.remove();
+        convName.textContent = el.dataset.name;
+        convSub.textContent = el.dataset.sub;
+        convAva.style.background = el.dataset.bg;
+        convAva.textContent = el.dataset.initials;
+        var messages = [];
+        try { messages = JSON.parse(el.dataset.messages); } catch (e) {}
+        convBody.innerHTML = messages.map(function (m) {
+          var ava = m.them ? el.dataset.bg : 'var(--lime)';
+          var initials = m.them ? el.dataset.initials : 'FW';
+          return '<div class="msg ' + (m.them ? 'ai-msg' : 'user-msg') + '">'
+            + '<div class="m-ava" style="background:' + ava + '">' + initials + '</div>'
+            + '<div class="m-bubble">' + m.text + '</div></div>';
+        }).join('');
+        convBody.scrollTop = convBody.scrollHeight;
+      }
+
+      msgThreadsEl.querySelectorAll('.msg-thread').forEach(function (t) {
+        t.addEventListener('click', function () { renderThread(t); });
+        t.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); renderThread(t); }
+        });
+      });
+
+      var firstThread = msgThreadsEl.querySelector('.msg-thread.active') || msgThreadsEl.querySelector('.msg-thread');
+      if (firstThread) renderThread(firstThread);
+
+      var convInput = document.getElementById('msgConvInput');
+      var convSend = document.getElementById('msgConvSend');
+      function sendReply() {
+        var text = convInput.value.trim();
+        if (!text) return;
+        var b = document.createElement('div');
+        b.className = 'msg user-msg';
+        b.innerHTML = '<div class="m-ava" style="background:var(--lime)">FW</div><div class="m-bubble">' + text + '</div>';
+        convBody.appendChild(b);
+        convBody.scrollTop = convBody.scrollHeight;
+        convInput.value = '';
+      }
+      if (convInput) {
+        convInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendReply(); });
+        if (convSend) convSend.addEventListener('click', sendReply);
+      }
     }
 
     // ---- chat: click suggestion or send ----
