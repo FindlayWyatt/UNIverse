@@ -32,11 +32,30 @@
   }
 
   // ---- RSVP persistence: remembers a clicked [data-rsvp] button across reloads ----
+  // Stores a timestamp (not just a flag) so notifications can show "X ago".
   function isRsvpDone(key) {
-    try { return window.localStorage.getItem('uv-rsvp-' + key) === '1'; } catch (e) { return false; }
+    try { return window.localStorage.getItem('uv-rsvp-' + key) !== null; } catch (e) { return false; }
   }
   function setRsvpDone(key) {
-    try { window.localStorage.setItem('uv-rsvp-' + key, '1'); } catch (e) {}
+    try { window.localStorage.setItem('uv-rsvp-' + key, String(Date.now())); } catch (e) {}
+  }
+
+  // ---- SAVED: a personal list, built from anything saved anywhere on the site ----
+  function getSaved() {
+    try { return JSON.parse(window.localStorage.getItem('uv-saved')) || []; } catch (e) { return []; }
+  }
+  function saveSavedItems(items) {
+    try { window.localStorage.setItem('uv-saved', JSON.stringify(items)); } catch (e) {}
+  }
+  function isSaved(id) {
+    return getSaved().some(function (i) { return i.id === id; });
+  }
+  // Adds if not already saved, removes if it is. Returns the new saved state.
+  function toggleSaved(item) {
+    var items = getSaved();
+    var idx = items.findIndex(function (i) { return i.id === item.id; });
+    if (idx === -1) { items.unshift(item); saveSavedItems(items); return true; }
+    items.splice(idx, 1); saveSavedItems(items); return false;
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -93,6 +112,108 @@
       });
       document.addEventListener('click', function (e) {
         if (!topSearchResults.contains(e.target) && e.target !== topSearchInput) topSearchResults.hidden = true;
+      });
+    }
+
+    // ---- notifications: messages, societies you've joined, and what's coming up ----
+    var notifBtn = document.getElementById('notifBtn');
+    var notifPanel = document.getElementById('notifPanel');
+    var notifDot = document.getElementById('notifDot');
+    var notifList = document.getElementById('notifList');
+    if (notifBtn && notifPanel && notifList) {
+      function notifTimeAgo(ts) {
+        var mins = Math.floor((Date.now() - ts) / 60000);
+        if (mins < 1) return 'Just now';
+        if (mins < 60) return mins + 'm ago';
+        var hrs = Math.floor(mins / 60);
+        if (hrs < 24) return hrs + 'h ago';
+        return Math.floor(hrs / 24) + 'd ago';
+      }
+      function notifWhen(dateStr) {
+        var target = new Date(dateStr + 'T00:00:00');
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var diff = Math.round((target - today) / 86400000);
+        if (diff < 0) return null;
+        if (diff === 0) return 'Today';
+        if (diff === 1) return 'Tomorrow';
+        return 'In ' + diff + ' days';
+      }
+      var ICON_CHAT = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>';
+      var ICON_SOC = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>';
+      var ICON_CAL = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M3 10h18M8 2v4M16 2v4"/></svg>';
+
+      function notifItem(icon, title, meta, url) {
+        return '<a class="notif-item" href="' + url + '">'
+          + '<div class="notif-ic">' + icon + '</div>'
+          + '<div class="notif-body"><div class="notif-title">' + title + '</div>'
+          + '<div class="notif-meta">' + meta + '</div></div></a>';
+      }
+
+      function buildNotifications() {
+        var messagesHtml = [];
+        if (window.UV_THREADS) {
+          window.UV_THREADS.forEach(function (th) {
+            var read = false;
+            try { read = window.localStorage.getItem('uv-msg-read-' + th.slug) !== null; } catch (e) {}
+            if (th.unread && !read) {
+              messagesHtml.push(notifItem('%%CHAT%%', th.name + ': ' + th.preview, 'New message', 'messages.html'));
+            }
+          });
+        }
+
+        var societiesHtml = [];
+        try {
+          Object.keys(window.localStorage).filter(function (k) { return k.indexOf('uv-joined-') === 0; })
+            .map(function (k) { return { slug: k.replace('uv-joined-', ''), raw: window.localStorage.getItem(k) }; })
+            .map(function (j) { var ts = parseInt(j.raw, 10); return { slug: j.slug, ts: isNaN(ts) ? 0 : ts }; })
+            .sort(function (a, b) { return b.ts - a.ts; })
+            .slice(0, 5)
+            .forEach(function (j) {
+              var match = (window.UV_SEARCH || []).find(function (i) { return i.u === 'society-' + j.slug + '.html'; });
+              var name = match ? match.t : j.slug;
+              societiesHtml.push(notifItem('%%SOC%%', "You're in! Welcome to " + name, j.ts ? notifTimeAgo(j.ts) : 'Joined', 'society-' + j.slug + '.html'));
+            });
+        } catch (e) {}
+
+        var upcomingHtml = [];
+        try {
+          (JSON.parse(window.localStorage.getItem('uv-calendar')) || [])
+            .map(function (ev) { return { ev: ev, when: notifWhen(ev.date) }; })
+            .filter(function (x) { return x.when; })
+            .sort(function (a, b) { return a.ev.date < b.ev.date ? -1 : 1; })
+            .slice(0, 5)
+            .forEach(function (x) {
+              var meta = x.when + (x.ev.time ? ' · ' + x.ev.time : '');
+              upcomingHtml.push(notifItem('%%CAL%%', x.ev.title, meta, 'profile.html'));
+            });
+        } catch (e) {}
+
+        var total = messagesHtml.length + societiesHtml.length + upcomingHtml.length;
+        notifDot.hidden = total === 0;
+
+        if (total === 0) {
+          notifList.innerHTML = '<div class="notif-empty">You\'re all caught up — nothing new.</div>';
+          return;
+        }
+        var html = '';
+        if (messagesHtml.length) html += '<div class="notif-section-label">Messages</div>' + messagesHtml.join('');
+        if (societiesHtml.length) html += '<div class="notif-section-label">Societies</div>' + societiesHtml.join('');
+        if (upcomingHtml.length) html += '<div class="notif-section-label">Coming up</div>' + upcomingHtml.join('');
+        notifList.innerHTML = html
+          .split('%%CHAT%%').join(ICON_CHAT)
+          .split('%%SOC%%').join(ICON_SOC)
+          .split('%%CAL%%').join(ICON_CAL);
+      }
+
+      buildNotifications();
+      notifBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var opening = notifPanel.hidden;
+        notifPanel.hidden = !notifPanel.hidden;
+        if (opening) buildNotifications();
+      });
+      document.addEventListener('click', function (e) {
+        if (!notifPanel.contains(e.target) && e.target !== notifBtn) notifPanel.hidden = true;
       });
     }
 
@@ -160,10 +281,72 @@
 
     // ---- save hearts ----
     document.querySelectorAll('.save-heart').forEach(function (h) {
+      var item = {
+        id: h.dataset.saveId, title: h.dataset.saveTitle, type: h.dataset.saveType,
+        url: h.dataset.saveUrl, meta: h.dataset.saveMeta, color: h.dataset.saveColor
+      };
+      function applyState(on) {
+        h.classList.toggle('on', on);
+        h.style.color = on ? 'var(--coral)' : '#fff';
+      }
+      if (item.id && isSaved(item.id)) applyState(true);
       h.addEventListener('click', function () {
-        h.classList.toggle('on');
-        h.style.color = h.classList.contains('on') ? 'var(--coral)' : '#fff';
+        if (!item.id) { applyState(!h.classList.contains('on')); return; }
+        applyState(toggleSaved(item));
       });
+    });
+
+    // ---- save toggles (text/emoji "Save" buttons, e.g. Feed posts, Opportunities) ----
+    document.querySelectorAll('.save-toggle').forEach(function (el) {
+      var item = {
+        id: el.dataset.saveId, title: el.dataset.saveTitle, type: el.dataset.saveType,
+        url: el.dataset.saveUrl, meta: el.dataset.saveMeta, color: el.dataset.saveColor
+      };
+      var defaultLabel = el.textContent.trim();
+      var savedLabel = el.dataset.savedLabel || 'Saved ✓';
+      function refresh() {
+        var saved = isSaved(item.id);
+        el.textContent = saved ? savedLabel : defaultLabel;
+        el.classList.toggle('saved-active', saved);
+      }
+      if (item.id) refresh();
+      el.addEventListener('click', function () {
+        if (!item.id) return;
+        toggleSaved(item);
+        refresh();
+      });
+    });
+
+    // ---- saved list (full page + the Account page's preview widget) ----
+    var ICON_CLOSE = '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>';
+    function savedRowHtml(it, preview) {
+      var meta = it.meta ? '<div class="saved-meta">' + it.meta + '</div>' : '';
+      var remove = preview ? '' : '<button class="saved-remove" data-id="' + it.id + '" aria-label="Remove from saved">' + ICON_CLOSE + '</button>';
+      return '<div class="saved-row">'
+        + '<span class="saved-type" style="background:' + (it.color || 'var(--lime)') + '">' + it.type + '</span>'
+        + '<a class="saved-body" href="' + it.url + '"><div class="saved-title">' + it.title + '</div>' + meta + '</a>'
+        + remove + '</div>';
+    }
+    document.querySelectorAll('#savedList, #savedPreviewList').forEach(function (list) {
+      var preview = list.dataset.preview === '1';
+      function render() {
+        var items = getSaved();
+        if (preview) items = items.slice(0, 3);
+        if (!items.length) {
+          list.innerHTML = '<div class="saved-empty">' + (preview
+            ? 'Nothing saved yet.'
+            : 'Nothing saved yet — tap the heart or "Save" on anything across the site and it\'ll show up here.') + '</div>';
+          return;
+        }
+        list.innerHTML = items.map(function (it) { return savedRowHtml(it, preview); }).join('');
+        list.querySelectorAll('.saved-remove').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            toggleSaved({ id: btn.dataset.id });
+            render();
+          });
+        });
+      }
+      render();
     });
 
     // ---- join buttons (societies) ----
@@ -171,10 +354,10 @@
     // once the (simulated) host accepts the request. The Feed's small "trending
     // societies" widget has no data-society — those just toggle Join/Joined.
     function isSocietyJoined(slug) {
-      try { return window.localStorage.getItem('uv-joined-' + slug) === '1'; } catch (e) { return false; }
+      try { return window.localStorage.getItem('uv-joined-' + slug) !== null; } catch (e) { return false; }
     }
     function setSocietyJoined(slug) {
-      try { window.localStorage.setItem('uv-joined-' + slug, '1'); } catch (e) {}
+      try { window.localStorage.setItem('uv-joined-' + slug, String(Date.now())); } catch (e) {}
     }
     document.querySelectorAll('.soc-join').forEach(function (b) {
       var slug = b.dataset.society;
@@ -562,6 +745,7 @@
         el.classList.add('active');
         var dot = el.querySelector('.msg-unread-dot');
         if (dot) dot.remove();
+        try { window.localStorage.setItem('uv-msg-read-' + el.dataset.thread, '1'); } catch (e) {}
         convName.textContent = el.dataset.name;
         convSub.textContent = el.dataset.sub;
         convAva.style.background = el.dataset.bg;
@@ -632,6 +816,102 @@
       if (chatSend) chatSend.addEventListener('click', function () { sendChat(chatInput.value.trim()); chatInput.value = ''; });
       document.querySelectorAll('.chat-suggest .cs').forEach(function (s) {
         s.addEventListener('click', function () { sendChat(s.textContent.trim()); });
+      });
+    }
+
+    // ---- login / sign-up page ----
+    var loginForm = document.getElementById('loginForm');
+    var signupForm = document.getElementById('signupForm');
+    if (loginForm && signupForm) {
+      var authTitle = document.getElementById('authTitle');
+      var authSub = document.getElementById('authSub');
+      var tabs = document.querySelectorAll('.auth-tab');
+      function showTab(name) {
+        var isSignup = name === 'signup';
+        loginForm.hidden = isSignup;
+        signupForm.hidden = !isSignup;
+        tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.tab === name); });
+        if (authTitle) authTitle.textContent = isSignup ? 'Join Uni-Verse' : 'Welcome back';
+        if (authSub) authSub.textContent = isSignup
+          ? 'Sign up with your Cardiff student email'
+          : 'Log in with your Cardiff student email';
+      }
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () { showTab(t.dataset.tab); });
+      });
+      if (window.location.hash === '#signup') showTab('signup');
+
+      function fieldError(box, msg) {
+        if (!box) return;
+        box.textContent = msg;
+        box.hidden = false;
+      }
+      function clearErrors(form) {
+        form.querySelectorAll('.field-invalid').forEach(function (f) { f.classList.remove('field-invalid'); });
+        var err = form.querySelector('.field-error');
+        if (err) { err.hidden = true; err.textContent = ''; }
+      }
+      function markInvalid(input) {
+        var field = input.closest('.field');
+        if (field) field.classList.add('field-invalid');
+      }
+      function goToApp(user) {
+        try { localStorage.setItem('uv-user', JSON.stringify(user)); } catch (e) {}
+        window.location.href = 'feed.html';
+      }
+
+      signupForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearErrors(signupForm);
+        var errBox = document.getElementById('signupError');
+        var name = signupForm.name.value.trim();
+        var username = signupForm.username.value.trim();
+        var email = signupForm.email.value.trim();
+        var pw = signupForm.password.value;
+        var pw2 = signupForm.password2.value;
+        var bad = false;
+        [signupForm.name, signupForm.username, signupForm.email, signupForm.password, signupForm.password2].forEach(function (input) {
+          if (!input.value.trim()) { markInvalid(input); bad = true; }
+        });
+        if (bad) { fieldError(errBox, 'Fill in every field to create your account.'); return; }
+        if (!/^[^\s@]+@[^\s@]*cardiff\.ac\.uk$/i.test(email)) {
+          markInvalid(signupForm.email);
+          fieldError(errBox, 'Use your Cardiff student email (ends in @cardiff.ac.uk).');
+          return;
+        }
+        if (pw.length < 8) {
+          markInvalid(signupForm.password);
+          fieldError(errBox, 'Password needs to be at least 8 characters.');
+          return;
+        }
+        if (pw !== pw2) {
+          markInvalid(signupForm.password);
+          markInvalid(signupForm.password2);
+          fieldError(errBox, 'Passwords don\'t match — check both fields.');
+          return;
+        }
+        goToApp({ name: name, username: username, email: email });
+      });
+
+      loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        clearErrors(loginForm);
+        var errBox = document.getElementById('loginError');
+        var email = loginForm.email.value.trim();
+        var pw = loginForm.password.value;
+        var bad = false;
+        [loginForm.email, loginForm.password].forEach(function (input) {
+          if (!input.value.trim()) { markInvalid(input); bad = true; }
+        });
+        if (bad) { fieldError(errBox, 'Enter your email and password.'); return; }
+        if (!/^[^\s@]+@[^\s@]*cardiff\.ac\.uk$/i.test(email)) {
+          markInvalid(loginForm.email);
+          fieldError(errBox, 'Use your Cardiff student email (ends in @cardiff.ac.uk).');
+          return;
+        }
+        var existing = null;
+        try { existing = JSON.parse(localStorage.getItem('uv-user') || 'null'); } catch (e2) {}
+        goToApp({ name: existing && existing.name, username: existing && existing.username, email: email });
       });
     }
   });

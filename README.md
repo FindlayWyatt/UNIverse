@@ -7,8 +7,10 @@ This is a **static front-end prototype** — no backend, no real accounts. It's 
 ## Pages
 | File | What it is |
 |------|-----------|
-| `landing.html` | Marketing + sign-up page (start here for the pitch) |
-| `index.html` | Logged-in student **Feed** (the core view) |
+| `index.html` | Marketing/pitch page — the site root, what a visitor sees first |
+| `landing.html` | Same page as `index.html` (kept as a stable link target) |
+| `login.html` | Log in / sign up (student email, password + confirm, username, name) |
+| `feed.html` | Logged-in student **Feed** (the core view, once you're "in the app") |
 | `events.html` | All events, grid + filters |
 | `bucs.html` | Cardiff University's BUCS sport fixtures (real Men's Super Rugby fixtures incl. the Cardiff Clash derby) |
 | `opportunities.html` | Internships / placements / jobs (links out to source) |

@@ -53,7 +53,7 @@ def going_color(n):
     return '#FF4757'
 
 NAV = [
-    ('index.html', 'feed', 'Home'),
+    ('feed.html', 'feed', 'Home'),
     ('events.html', 'events', 'Events'),
     ('societies.html', 'societies', 'Societies'),
     ('bucs.html', 'bucs', 'BUCS'),
@@ -136,7 +136,7 @@ SEARCH_INDEX = [
     {'t': 'Cardiff University Sports Fields', 'c': 'Venue', 'u': 'map.html', 'd': 'Llanrumney · BUCS'},
     {'t': 'Cardiff Arms Park', 'c': 'Venue', 'u': 'map.html', 'd': 'City Centre · BUCS'},
     # Pages
-    {'t': 'Home', 'c': 'Page', 'u': 'index.html', 'd': 'Your feed'},
+    {'t': 'Home', 'c': 'Page', 'u': 'feed.html', 'd': 'Your feed'},
     {'t': 'Events', 'c': 'Page', 'u': 'events.html', 'd': "What's on"},
     {'t': 'Societies', 'c': 'Page', 'u': 'societies.html', 'd': 'Find your people'},
     {'t': 'BUCS', 'c': 'Page', 'u': 'bucs.html', 'd': 'Cardiff University sport'},
@@ -147,6 +147,16 @@ SEARCH_INDEX = [
     {'t': 'Messages', 'c': 'Page', 'u': 'messages.html', 'd': 'Your inbox'},
     {'t': 'Staying safe', 'c': 'Page', 'u': 'safety.html', 'd': 'Night safety & taxis'},
     {'t': 'Ask Uni-Verse AI', 'c': 'Page', 'u': 'ai.html', 'd': 'Your Cardiff guide'},
+]
+
+# Lightweight thread metadata for the notification bell (must match the slugs/names
+# used in build_messages()'s msg_thread() calls). Not the full conversations —
+# those only need to exist in the DOM of messages.html itself.
+NOTIF_THREADS = [
+    {'slug': 'priya', 'name': 'Priya', 'preview': "Thursday's perfect, come by around 4pm — I'll send the address", 'unread': True},
+    {'slug': 'jack', 'name': 'Jack', 'preview': "Oh nice, I might know someone actually — I'll ask and get back to you", 'unread': False},
+    {'slug': 'careers', 'name': 'Cardiff Careers', 'preview': "Quick tip: tailor your cover letter to the 'why Admiral' question", 'unread': False},
+    {'slug': 'filmsoc', 'name': 'Film Society', 'preview': 'Welcome to Film Society! First screening is Thursday, 7pm, SU Cinema', 'unread': False},
 ]
 
 # Leaflet (OpenStreetMap) — no API key needed, used on the venue map page
@@ -173,7 +183,11 @@ def topbar():
             'placeholder="Search events, societies, jobs, discounts…">'
             '<div class="search-results" id="topSearchResults" hidden></div></div>'
             '<div class="top-actions">'
-            '<button class="icon-btn"><span class="dot"></span>%s</button>'
+            '<div class="notif-wrap">'
+            '<button class="icon-btn" id="notifBtn" aria-label="Notifications"><span class="dot" id="notifDot" hidden></span>%s</button>'
+            '<div class="notif-panel" id="notifPanel" hidden>'
+            '<h4>Notifications</h4><div class="notif-list" id="notifList"></div>'
+            '</div></div>'
             '<a class="icon-btn" href="messages.html" aria-label="Messages">%s</a>'
             '</div></header>' % (ICONS['search'], ICONS['bell'], ICONS['chat']))
 
@@ -291,7 +305,9 @@ def post_social():
             '<div class="bit">%s Students\' Union, Y Plas</div>'
             '<div class="bit">%s 84 going</div></div>'
             '<div class="post-foot"><div class="react"><span>♥ 126</span><span>💬 18</span><span>↗ Share</span></div>'
-            '<div class="post-actions"><button class="pill">Save</button>'
+            '<div class="post-actions"><button class="pill save-toggle" data-save-id="event:Games Night + Pizza" '
+            'data-save-title="Games Night + Pizza" data-save-type="Social" data-save-url="events.html" '
+            'data-save-meta="Thu 2 Oct · Students\' Union, Y Plas" data-save-color="var(--coral)">Save</button>'
             '<button class="pill coral" data-rsvp="You\'re in 🎉" data-cal-title="Games Night + Pizza" '
             'data-cal-date="2026-10-02" data-cal-time="7:00pm" data-cal-place="Students\' Union, Y Plas" '
             'data-cal-color="var(--coral)">I\'m going</button></div></div></article>'
@@ -319,7 +335,10 @@ def post_job():
             '<p>Paid 10-week placement in Cardiff. Open to 2nd &amp; penultimate-year students. Applications close 14 Nov.</p>'
             '<div class="post-info"><div class="bit">%s £24k pro-rata</div>'
             '<div class="bit">%s Cardiff / Hybrid</div><div class="bit">%s Closes 14 Nov</div></div>'
-            '<div class="post-foot"><div class="react"><span>🔖 Save</span><span>↗ Share</span></div>'
+            '<div class="post-foot"><div class="react"><span class="save-toggle" data-save-id="opportunity:Summer Internship — Admiral, Data Analyst" '
+            'data-save-title="Summer Internship — Admiral, Data Analyst" data-save-type="Opportunity" '
+            'data-save-url="opportunities.html" data-save-meta="Admiral · £24k pro-rata · Closes 14 Nov" '
+            'data-save-color="var(--sky)" data-saved-label="🔖 Saved ✓">🔖 Save</span><span>↗ Share</span></div>'
             '<div class="post-actions"><button class="pill">Details</button>'
             '<button class="pill primary">Apply on site %s</button></div></div></article>'
             % (VERIFY, ICONS['money'], ICONS['pin'], ICONS['clock'], ICONS['ext']))
@@ -335,7 +354,9 @@ def post_workshop():
             '<div class="post-info"><div class="bit">%s Wed 8 Oct · 5:30pm</div>'
             '<div class="bit">%s sbarc | spark</div></div>'
             '<div class="post-foot"><div class="react"><span>♥ 61</span><span>💬 7</span></div>'
-            '<div class="post-actions"><button class="pill">Save</button>'
+            '<div class="post-actions"><button class="pill save-toggle" data-save-id="event:CV Clinic + Networking" '
+            'data-save-title="CV Clinic + Networking" data-save-type="Workshop" data-save-url="events.html" '
+            'data-save-meta="Wed 8 Oct · sbarc | spark" data-save-color="var(--amber)">Save</button>'
             '<button class="pill primary" data-rsvp="Reserved ✓" data-cal-title="CV Clinic + Networking" '
             'data-cal-date="2026-10-08" data-cal-time="5:30pm" data-cal-place="sbarc | spark" '
             'data-cal-color="var(--amber)">Reserve spot</button></div></div></article>'
@@ -360,7 +381,7 @@ def build_feed():
 
 # ================= PAGE: EVENTS =================
 def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going, cta, iso_date, color,
-                ticket_url='', ticket_label='', freshers=False):
+                ticket_url='', ticket_label='', freshers=False, page_url='events.html'):
     v = VERIFY if verified else ''
     cal_time = date.split(' · ')[-1]
     ticket_html = ''
@@ -368,9 +389,11 @@ def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going,
         ticket_html = ('<a class="ticket-link" href="%s" target="_blank" rel="noopener">%s %s</a>'
                         % (ticket_url, ticket_label, ICONS['ext']))
     freshers_attr = ' data-freshers="1"' if freshers else ''
+    save_id = 'event:' + title
     return ('<div class="card"%s><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
-            '<button class="save-heart">%s</button>'
+            '<button class="save-heart" data-save-id="%s" data-save-title="%s" data-save-type="%s" '
+            'data-save-url="%s" data-save-meta="%s" data-save-color="%s">%s</button>'
             '<span class="emoji">%s</span></div>'
             '<div class="card-body"><h3>%s</h3>'
             '<div class="by">%s%s</div>'
@@ -378,7 +401,8 @@ def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going,
             '<div class="card-foot"><span class="stat">%s going</span>'
             '<button class="pill primary" data-rsvp="Going ✓" data-cal-title="%s" data-cal-date="%s" '
             'data-cal-time="%s" data-cal-place="%s" data-cal-color="%s">%s</button></div></div></div>'
-            % (freshers_attr, bg, cat, ICONS['heart'], emoji, title, org, v, ICONS['cal'], date, ICONS['pin'], place,
+            % (freshers_attr, bg, cat, save_id, title, cat, page_url, date + ' · ' + place, color, ICONS['heart'],
+               emoji, title, org, v, ICONS['cal'], date, ICONS['pin'], place,
                ticket_html, going, title, iso_date, cal_time, place, color, cta))
 
 def build_events():
@@ -420,32 +444,32 @@ def build_bucs():
                     'Cardiff vs Hartpury', 'Round 1 · Home · BUCS Super Rugby', True,
                     'Wed 23 Sep · 2pm', 'Cardiff University Sports Fields, Llanrumney', '54', 'I\'m going',
                     '2026-09-23', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
         event_card('🏉', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Rugby', '',
                     'Durham vs Cardiff', 'Round 2 · Away · BUCS Super Rugby', True,
                     'Wed 30 Sep · 2pm', 'Durham', '11', 'I\'m going',
                     '2026-09-30', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
         event_card('🏆', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Derby', '',
                     'Cardiff vs Cardiff Met', 'Round 3 · Home · The Cardiff Clash', True,
                     'Wed 7 Oct · 7:30pm', 'Cardiff Arms Park', '340', 'I\'m going',
                     '2026-10-07', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'The Cardiff Clash — get tickets'),
+                    'https://www.bucs.org.uk/tickets.html', 'The Cardiff Clash — get tickets', page_url='bucs.html'),
         event_card('🏉', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Rugby', '',
                     'Brunel vs Cardiff', 'Round 4 · Away · BUCS Super Rugby', True,
                     'Wed 14 Oct · 2pm', 'Brunel', '9', 'I\'m going',
                     '2026-10-14', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
         event_card('🏉', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Rugby', '',
                     'Cardiff vs Nottingham', 'Round 5 · Home · BUCS Super Rugby', True,
                     'Wed 28 Oct · 2pm', 'Cardiff University Sports Fields, Llanrumney', '61', 'I\'m going',
                     '2026-10-28', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
         event_card('🏉', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Rugby', '',
                     'Exeter vs Cardiff', 'Round 6 · Away · BUCS Super Rugby', True,
                     'Wed 4 Nov · 2pm', 'Exeter', '14', 'I\'m going',
                     '2026-11-04', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
     ]
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Cardiff University sport</div>'
@@ -464,16 +488,20 @@ def build_bucs():
 def opp_row(logo, bg, role, kind, org, verified, tags, closes):
     v = VERIFY if verified else ''
     tagbits = ''.join('<div class="bit">%s</div>' % t for t in tags)
+    save_id = 'opportunity:' + role
     return ('<article class="post"><span class="accent-edge" style="background:var(--sky)"></span>'
             '<div class="post-top"><div class="post-ava" style="background:%s">%s</div>'
             '<div class="post-meta"><div class="org">%s%s</div>'
             '<div class="time">%s · links out to employer</div></div>'
             '<span class="post-cat" style="background:color-mix(in srgb,var(--sky) 16%%,transparent);color:var(--sky)">%s</span></div>'
             '<h3>%s</h3><div class="post-info">%s</div>'
-            '<div class="post-foot"><div class="react"><span>🔖 Save</span><span>↗ Share</span></div>'
+            '<div class="post-foot"><div class="react"><span class="save-toggle" data-save-id="%s" '
+            'data-save-title="%s" data-save-type="Opportunity" data-save-url="opportunities.html" '
+            'data-save-meta="%s" data-save-color="var(--sky)" data-saved-label="🔖 Saved ✓">🔖 Save</span>'
+            '<span>↗ Share</span></div>'
             '<div class="post-actions"><button class="pill">Details</button>'
             '<button class="pill primary">Apply on site %s</button></div></div></article>'
-            % (bg, logo, org, v, closes, kind, role, tagbits, ICONS['ext']))
+            % (bg, logo, org, v, closes, kind, role, tagbits, save_id, role, org + ' · ' + closes, ICONS['ext']))
 
 def build_opps():
     rows = [
@@ -498,16 +526,18 @@ def build_opps():
 
 # ================= PAGE: DISCOUNTS =================
 def deal_card(emoji, bg, cat, name, place, desc, pct, cta):
+    save_id = 'discount:' + name
     return ('<div class="card"><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
-            '<button class="save-heart">%s</button>'
+            '<button class="save-heart" data-save-id="%s" data-save-title="%s" data-save-type="Discount" '
+            'data-save-url="discounts.html" data-save-meta="%s" data-save-color="var(--lime)">%s</button>'
             '<span class="emoji">%s</span><span class="deal-tag">%s</span></div>'
             '<div class="card-body"><h3>%s</h3>'
             '<div class="by">%s · Uni-Verse partner</div>'
             '<p>%s</p>'
             '<div class="card-foot"><span class="stat">Show your card</span>'
             '<button class="pill primary">%s</button></div></div></div>'
-            % (bg, cat, ICONS['heart'], emoji, pct, name, place, desc, cta))
+            % (bg, cat, save_id, name, place + ' · ' + pct, ICONS['heart'], emoji, pct, name, place, desc, cta))
 
 def build_discounts():
     cards = [
@@ -821,9 +851,13 @@ SOCIETY_PAGES = {
 
 # ================= PAGE: FLATMATES =================
 def flat_card(emoji, bg, area, title, poster, desc, price, available, spots, key):
+    save_id = 'flatmate:' + key
+    save_title = area + ' — ' + title
+    save_meta = price + ' pcm · Available ' + available
     return ('<div class="card"><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
-            '<button class="save-heart">%s</button>'
+            '<button class="save-heart" data-save-id="%s" data-save-title="%s" data-save-type="Flatmate" '
+            'data-save-url="flatmates.html" data-save-meta="%s" data-save-color="var(--sky)">%s</button>'
             '<span class="emoji">%s</span></div>'
             '<div class="card-body"><h3>%s</h3>'
             '<div class="by">%s</div>'
@@ -831,8 +865,8 @@ def flat_card(emoji, bg, area, title, poster, desc, price, available, spots, key
             '<div class="card-info"><div class="bit">%s %s pcm</div><div class="bit">%s Available %s</div></div>'
             '<div class="card-foot"><span class="stat">%s</span>'
             '<button class="pill primary" data-rsvp="Message sent ✓" data-rsvp-key="flatmate-%s">Message</button></div></div></div>'
-            % (bg, area, ICONS['heart'], emoji, title, poster, desc, ICONS['money'], price, ICONS['cal'],
-               available, spots, key))
+            % (bg, area, save_id, save_title, save_meta, ICONS['heart'], emoji, title, poster, desc, ICONS['money'],
+               price, ICONS['cal'], available, spots, key))
 
 def build_flatmates():
     post_cta = ('<div class="widget" style="display:flex;align-items:center;justify-content:space-between;'
@@ -922,6 +956,21 @@ def build_messages():
             '<button id="msgConvSend">%s</button></div>'
             '</div></div></div></div>' % (''.join(threads), ICONS['send']))
     return page('Messages', 'profile', body)
+
+# ================= PAGE: SAVED =================
+def build_saved():
+    body = ('<div class="content">'
+            '<div class="page-head"><div class="ey mono-eyebrow">Your list</div>'
+            '<h1>Saved</h1>'
+            '<div class="sub">Everything you\'ve saved across Uni-Verse — events, discounts, opportunities and rooms — in one place.</div></div>'
+            '<div class="widget"><div class="saved-list" id="savedList"></div></div>'
+            '</div>')
+    return page('Saved', 'profile', body)
+
+def saved_preview_widget():
+    return ('<div class="widget"><div class="widget-head"><h3>Saved</h3>'
+            '<a href="saved.html">View all →</a></div>'
+            '<div class="saved-list" id="savedPreviewList" data-preview="1"></div></div>')
 
 # ================= PAGE: SAFETY =================
 def contact_row(icon, name, detail, desc):
@@ -1159,7 +1208,8 @@ def build_profile():
             '<div class="prog-txt"><div class="lbl">Building momentum 🚀</div>'
             '<div class="dsc">Every goal you tick is a thing you won\'t look back and wish you\'d done.</div></div></div>'
             '<div class="prog-steps">%s</div></div></div>' % ''.join(grows))
-    right = ('<aside class="side-col">%s%s%s</aside>' % (messages_preview_widget(), sidebar_ai(), sidebar_week()))
+    right = ('<aside class="side-col">%s%s%s%s</aside>'
+             % (messages_preview_widget(), saved_preview_widget(), sidebar_ai(), sidebar_week()))
     body = ('<div class="content"><div class="two-col">%s%s</div>%s</div>'
             % (left, right, calendar_widget()))
     return page('Your journey', 'profile', body)
@@ -1196,6 +1246,54 @@ def build_ai():
             '</div></div>' % (ICONS['spark'], recs, ICONS['send']))
     return page('Ask Uni-Verse AI', 'ai', body, chat=True)
 
+# ================= PAGE: LOGIN / SIGN UP =================
+def build_login():
+    body = ('<div class="landing login-page">'
+            '<nav class="land-nav"><a href="landing.html" class="name">Uni<span>-</span>Verse</a>'
+            '<div class="land-nav-links"><a href="landing.html">About</a>'
+            '<a href="feed.html" class="btn-sm" style="color:var(--lime);font-weight:800">Open app →</a></div></nav>'
+            '<div class="auth-wrap">'
+            '<div class="auth-card">'
+            '<div class="ey mono-eyebrow">Students only</div>'
+            '<h2 id="authTitle">Welcome back</h2>'
+            '<div class="as" id="authSub">Log in with your Cardiff student email</div>'
+            '<div class="auth-tabs">'
+            '<button type="button" class="auth-tab active" data-tab="login">Log in</button>'
+            '<button type="button" class="auth-tab" data-tab="signup">Sign up</button>'
+            '</div>'
+            '<form id="loginForm" class="auth-form" novalidate>'
+            '<div class="field"><label>Cardiff student email</label>'
+            '<input type="email" name="email" required placeholder="c1234567@cardiff.ac.uk"></div>'
+            '<div class="field"><label>Password</label>'
+            '<input type="password" name="password" required placeholder="Your password"></div>'
+            '<div class="field-error" id="loginError" hidden></div>'
+            '<button type="submit" class="btn-lg primary" style="width:100%;justify-content:center;margin-top:6px">Log in</button>'
+            '</form>'
+            '<form id="signupForm" class="auth-form" novalidate hidden>'
+            '<div class="field"><label>Full name</label>'
+            '<input type="text" name="name" required placeholder="e.g. Findlay Wyatt"></div>'
+            '<div class="field"><label>Username</label>'
+            '<input type="text" name="username" required placeholder="e.g. findlaywyatt"></div>'
+            '<div class="field"><label>Cardiff student email</label>'
+            '<input type="email" name="email" required placeholder="c1234567@cardiff.ac.uk"></div>'
+            '<div class="field"><label>Password</label>'
+            '<input type="password" name="password" required placeholder="Create a password"></div>'
+            '<div class="field"><label>Confirm password</label>'
+            '<input type="password" name="password2" required placeholder="Re-enter your password"></div>'
+            '<div class="field-error" id="signupError" hidden></div>'
+            '<button type="submit" class="btn-lg primary" style="width:100%;justify-content:center;margin-top:6px">Create account</button>'
+            '</form>'
+            '<div class="auth-note">Verified with your @cardiff.ac.uk email so the community stays students-only. This is a prototype — no real account is created; details are only ever stored in your browser.</div>'
+            '</div></div>'
+            + footer() + '</div>')
+    doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+           '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+           '<title>Log in · Uni-Verse Cardiff</title>%s'
+           '<link rel="stylesheet" href="css/styles.css"></head><body>'
+           '%s%s<script src="js/app.js"></script></body></html>'
+           % (FONTS, body, theme_switcher()))
+    return doc
+
 # ================= PAGE: LANDING =================
 def build_landing():
     val = lambda bg, ic, h, p: ('<div class="val"><div class="vic" style="background:%s">%s</div>'
@@ -1222,12 +1320,12 @@ def build_landing():
             '<nav class="land-nav"><div class="name">Uni<span>-</span>Verse</div>'
             '<div class="land-nav-links"><a href="#what">What is it</a><a href="events.html">Events</a>'
             '<a href="discounts.html">Discounts</a>'
-            '<a href="index.html" class="btn-sm" style="color:var(--lime);font-weight:800">Open app →</a></div></nav>'
+            '<a href="feed.html" class="btn-sm" style="color:var(--lime);font-weight:800">Open app →</a></div></nav>'
             '<div class="land-hero"><div class="hero-glow"></div><div class="hero-glow two"></div>'
             '<div class="hero-left"><div class="ey mono-eyebrow">Cardiff University · student platform</div>'
             '<h1>Everything at Cardiff, <span class="hl">in one place.</span></h1>'
             '<p class="lede">Every student we spoke to said the same thing: <em>"I wish I\'d known what was on."</em> Uni-Verse pulls all the events, societies, opportunities and discounts into one feed — so you never miss the uni you could\'ve had.</p>'
-            '<div class="hero-cta"><a href="index.html" class="btn-lg primary">Open the app @@ARROW@@</a>'
+            '<div class="hero-cta"><a href="feed.html" class="btn-lg primary">Open the app @@ARROW@@</a>'
             '<a href="#what" class="btn-lg ghost">See how it works</a></div>'
             '<div class="hero-proof">'
             '<div class="pf"><div class="n">300+</div><div class="l">Societies</div></div>'
@@ -1238,11 +1336,9 @@ def build_landing():
             '<h2>Four things, one login.</h2></div><div class="val-grid">@@VALUES@@</div></div>'
             '<div class="auth-wrap"><div class="auth-card"><div class="ey mono-eyebrow">Students only</div>'
             '<h2>Join Uni-Verse</h2><div class="as">Sign up with your Cardiff student email</div>'
-            '<div class="field"><label>Cardiff email</label><input type="email" placeholder="c1234567@cardiff.ac.uk"></div>'
-            '<div class="field"><label>Password</label><input type="password" placeholder="Create a password"></div>'
-            '<a href="index.html" class="btn-lg primary" style="width:100%;justify-content:center;margin-top:6px">Create account</a>'
+            '<a href="login.html#signup" class="btn-lg primary" style="width:100%;justify-content:center;margin-top:6px">Create account</a>'
             '<div class="divider">or</div>'
-            '<a href="index.html" class="btn-lg ghost" style="width:100%;justify-content:center">I already have an account</a>'
+            '<a href="login.html#login" class="btn-lg ghost" style="width:100%;justify-content:center">I already have an account</a>'
             '<div class="auth-note">Verified with your @cardiff.ac.uk email so the community stays students-only. This is a prototype — no real account is created.</div>'
             '</div></div>'
             + footer() + '</div>')
@@ -1260,7 +1356,11 @@ def build_landing():
 
 # ---------------- write all ----------------
 pages = {
-    'index.html': build_feed(),
+    # index.html is the site root (what a real host serves at "/") — the landing
+    # page, so a first-time visitor sees the pitch before signing in. The app
+    # itself (the old index.html) now lives at feed.html.
+    'index.html': build_landing(),
+    'feed.html': build_feed(),
     'events.html': build_events(),
     'bucs.html': build_bucs(),
     'opportunities.html': build_opps(),
@@ -1270,9 +1370,11 @@ pages = {
     'societies.html': build_societies(),
     'flatmates.html': build_flatmates(),
     'messages.html': build_messages(),
+    'saved.html': build_saved(),
     'profile.html': build_profile(),
     'ai.html': build_ai(),
     'landing.html': build_landing(),
+    'login.html': build_login(),
 }
 pages.update(SOCIETY_PAGES)
 for fn, html in pages.items():
@@ -1281,7 +1383,8 @@ for fn, html in pages.items():
     print('wrote', fn, len(html), 'bytes')
 
 # search index, consumed by the topbar search dropdown (js/app.js)
-search_js = 'var UV_SEARCH = ' + json.dumps(SEARCH_INDEX, ensure_ascii=False) + ';'
+search_js = ('var UV_SEARCH = ' + json.dumps(SEARCH_INDEX, ensure_ascii=False) + ';\n'
+             + 'var UV_THREADS = ' + json.dumps(NOTIF_THREADS, ensure_ascii=False) + ';')
 with open(os.path.join(OUT, 'js', 'search-data.js'), 'w', encoding='utf-8') as f:
     f.write(search_js)
 print('wrote js/search-data.js', len(search_js), 'bytes')
