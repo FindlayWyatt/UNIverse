@@ -77,7 +77,50 @@
     items.splice(idx, 1); saveSavedItems(items); return false;
   }
 
+  // ---- USER: identity set at login/signup, extended by the profile edit form ----
+  function getUser() {
+    try { return JSON.parse(window.localStorage.getItem('uv-user')) || null; } catch (e) { return null; }
+  }
+  function saveUser(user) {
+    try { window.localStorage.setItem('uv-user', JSON.stringify(user)); } catch (e) {}
+  }
+  function initialsOf(name) {
+    var words = (name || '').match(/[A-Za-z0-9]+/g) || [];
+    if (!words.length) return '?';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  function downscaleImage(file, maxDim, cb) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        var w = Math.max(1, Math.round(img.width * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    // ---- sidebar nav avatar: reflects whatever's set on the profile page, on every page ----
+    (function () {
+      var navAvatar = document.querySelector('.rail-avatar[href="profile.html"]');
+      if (!navAvatar) return;
+      var u = getUser();
+      if (u && u.photo) {
+        navAvatar.innerHTML = '<img src="' + u.photo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+      } else if (u && u.name) {
+        navAvatar.textContent = initialsOf(u.name);
+      }
+    })();
+
     // ---- theme switcher ----
     var fab = document.getElementById('themeFab');
     var panel = document.getElementById('themePanel');
@@ -319,7 +362,7 @@
     // buttons tied to a calendar entry key off title+date (matching the calendar's
     // own id), others use an explicit data-rsvp-key. The venue map's own RSVP
     // buttons (.venue-rsvp) are handled separately below, alongside the pin/count logic.
-    document.querySelectorAll('[data-rsvp]').forEach(function (btn) {
+    function wireRsvpButton(btn) {
       if (btn.classList.contains('venue-rsvp')) return;
       var key = btn.dataset.rsvpKey
         || (btn.dataset.calTitle && btn.dataset.calDate ? btn.dataset.calTitle + '|' + btn.dataset.calDate : null);
@@ -359,10 +402,11 @@
           });
         }
       });
-    });
+    }
+    document.querySelectorAll('[data-rsvp]').forEach(wireRsvpButton);
 
     // ---- save hearts ----
-    document.querySelectorAll('.save-heart').forEach(function (h) {
+    function wireSaveHeart(h) {
       var item = {
         id: h.dataset.saveId, title: h.dataset.saveTitle, type: h.dataset.saveType,
         url: h.dataset.saveUrl, meta: h.dataset.saveMeta, color: h.dataset.saveColor
@@ -376,7 +420,8 @@
         if (!item.id) { applyState(!h.classList.contains('on')); return; }
         applyState(toggleSaved(item));
       });
-    });
+    }
+    document.querySelectorAll('.save-heart').forEach(wireSaveHeart);
 
     // ---- save toggles (text/emoji "Save" buttons, e.g. Feed posts, Opportunities) ----
     document.querySelectorAll('.save-toggle').forEach(function (el) {
@@ -401,6 +446,8 @@
 
     // ---- saved list (full page + the Account page's preview widget) ----
     var ICON_CLOSE = '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>';
+    var ICON_HEART = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.8 5.6a5.5 5.5 0 00-7.8 0L12 6.6l-1-1a5.5 5.5 0 10-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>';
+    var ICON_MONEY = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>';
     function savedRowHtml(it, preview) {
       var meta = it.meta ? '<div class="saved-meta">' + it.meta + '</div>' : '';
       var remove = preview ? '' : '<button class="saved-remove" data-id="' + it.id + '" aria-label="Remove from saved">' + ICON_CLOSE + '</button>';
@@ -508,13 +555,240 @@
         list.innerHTML += '<div class="your-soc-more">+' + (joined.length - shown.length) + ' more</div>';
       }
     }
-    function initialsOf(name) {
-      var words = name.match(/[A-Za-z0-9]+/g) || [];
-      if (!words.length) return '?';
-      if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
     renderYourSocieties();
+
+    // ---- flatmates: post a room (area/price/description/photo) + a "View" modal ----
+    var flatGrid = document.getElementById('flatGrid');
+    if (flatGrid) {
+      function getUserFlats() {
+        try { return JSON.parse(window.localStorage.getItem('uv-flatmates')) || []; } catch (e) { return []; }
+      }
+      function saveUserFlats(items) {
+        try { window.localStorage.setItem('uv-flatmates', JSON.stringify(items)); } catch (e) {}
+      }
+      function posterName() {
+        try {
+          var u = JSON.parse(window.localStorage.getItem('uv-user'));
+          if (u && u.name) return u.name;
+        } catch (e) {}
+        return 'You';
+      }
+      function renderYourListings() {
+        var list = document.getElementById('yourListingsList');
+        if (!list) return;
+        var items = getUserFlats().slice().reverse();
+        if (!items.length) {
+          list.innerHTML = '<div class="your-soc-empty">You haven\'t posted a room yet — post one and it\'ll show up here.</div>';
+          return;
+        }
+        list.innerHTML = items.map(function (it) {
+          var shortDesc = it.desc.length > 60 ? it.desc.slice(0, 57) + '…' : it.desc;
+          return '<a class="soc-row" href="javascript:void(0)" data-flat-target="flat-' + it.id + '">'
+            + '<div class="soc-row-ava" style="background:var(--lime)">🏠</div>'
+            + '<div class="soc-row-body"><div class="soc-row-name">£' + it.price + ' pcm · ' + it.area + '</div>'
+            + '<div class="soc-row-cat">' + shortDesc + '</div></div></a>';
+        }).join('');
+        list.querySelectorAll('[data-flat-target]').forEach(function (row) {
+          row.addEventListener('click', function () {
+            var card = document.getElementById(row.dataset.flatTarget);
+            if (!card) return;
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.classList.add('soc-row-flash');
+            setTimeout(function () { card.classList.remove('soc-row-flash'); }, 2200);
+          });
+        });
+      }
+      function flatCardEl(item) {
+        var wrap = document.createElement('div');
+        var mediaInner = item.photo
+          ? '<img src="' + item.photo + '" alt="" style="width:100%;height:100%;object-fit:cover">'
+          : '<span class="emoji">🏠</span>';
+        var saveId = 'flatmate:' + item.id;
+        var saveTitle = item.area + ' — Spare room';
+        var saveMeta = '£' + item.price + ' pcm · ' + item.area;
+        wrap.innerHTML = '<div class="card" id="flat-' + item.id + '" data-cat="' + item.area + '" data-price="' + item.price + '">'
+          + '<div class="card-media" style="background:linear-gradient(135deg,var(--lime),var(--sky))">'
+          + '<span class="chip-cat">' + item.area + '</span>'
+          + '<button type="button" class="flat-delete-btn" aria-label="Delete this listing">' + ICON_CLOSE + '</button>'
+          + '<button class="save-heart" data-save-id="' + saveId + '" data-save-title="' + saveTitle + '" data-save-type="Flatmate" '
+          + 'data-save-url="flatmates.html" data-save-meta="' + saveMeta + '" data-save-color="var(--sky)">' + ICON_HEART + '</button>'
+          + mediaInner + '</div>'
+          + '<div class="card-body"><h3>Spare room</h3>'
+          + '<div class="by">Posted by ' + item.poster + ' · just now</div>'
+          + '<p>' + item.desc + '</p>'
+          + '<div class="card-info"><div class="bit">' + ICON_MONEY + ' £' + item.price + ' pcm</div></div>'
+          + '<div class="card-foot">'
+          + '<span class="stat">New listing</span>'
+          + '<div class="post-actions">'
+          + '<button type="button" class="pill flat-view-btn">View</button>'
+          + '<button class="pill primary" data-rsvp="Message sent ✓" data-rsvp-key="flatmate-' + item.id + '">Message</button>'
+          + '</div></div>'
+          + '<div class="card-foot flat-delete-row" hidden>'
+          + '<span class="stat">Delete this listing?</span>'
+          + '<div class="post-actions">'
+          + '<button type="button" class="pill flat-delete-cancel">Cancel</button>'
+          + '<button type="button" class="pill coral flat-delete-confirm">Delete</button>'
+          + '</div></div></div></div>';
+        return wrap.firstElementChild;
+      }
+      function wireNewFlatCard(card, item) {
+        var heart = card.querySelector('.save-heart');
+        if (heart) wireSaveHeart(heart);
+        var rsvpBtn = card.querySelector('[data-rsvp]');
+        if (rsvpBtn) wireRsvpButton(rsvpBtn);
+        var viewBtn = card.querySelector('.flat-view-btn');
+        if (viewBtn) viewBtn.addEventListener('click', function () { openFlatModal(card); });
+
+        // ---- delete this listing, with a real confirmation step first ----
+        var feet = card.querySelectorAll('.card-foot');
+        var defaultFoot = feet[0], confirmFoot = feet[1];
+        var deleteBtn = card.querySelector('.flat-delete-btn');
+        if (deleteBtn && defaultFoot && confirmFoot) {
+          deleteBtn.addEventListener('click', function () {
+            defaultFoot.hidden = true;
+            confirmFoot.hidden = false;
+          });
+          var cancelBtn = confirmFoot.querySelector('.flat-delete-cancel');
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', function () {
+              confirmFoot.hidden = true;
+              defaultFoot.hidden = false;
+            });
+          }
+          var confirmBtn = confirmFoot.querySelector('.flat-delete-confirm');
+          if (confirmBtn) {
+            confirmBtn.addEventListener('click', function () {
+              saveUserFlats(getUserFlats().filter(function (i) { return i.id !== item.id; }));
+              card.remove();
+              renderYourListings();
+            });
+          }
+        }
+      }
+
+      // restore any previously-posted rooms, most recent first
+      getUserFlats().slice().reverse().forEach(function (item) {
+        var card = flatCardEl(item);
+        flatGrid.insertBefore(card, flatGrid.firstChild);
+        wireNewFlatCard(card, item);
+      });
+      renderYourListings();
+
+      // ---- post a room ----
+      var postRoomBtn = document.getElementById('postRoomBtn');
+      var flatAddForm = document.getElementById('flatAddForm');
+      if (postRoomBtn && flatAddForm) {
+        postRoomBtn.addEventListener('click', function () { flatAddForm.hidden = !flatAddForm.hidden; });
+
+        var flatCancelBtn = document.getElementById('flatCancelBtn');
+        if (flatCancelBtn) flatCancelBtn.addEventListener('click', function () { flatAddForm.hidden = true; });
+
+        var photoInput = document.getElementById('flatFPhoto');
+        var photoPreview = document.getElementById('flatPhotoPreview');
+        var photoPreviewImg = document.getElementById('flatPhotoPreviewImg');
+        var photoRemoveBtn = document.getElementById('flatPhotoRemove');
+        var currentPhoto = '';
+
+        if (photoInput) {
+          photoInput.addEventListener('change', function () {
+            var file = photoInput.files && photoInput.files[0];
+            if (!file) return;
+            downscaleImage(file, 480, function (dataUrl) {
+              currentPhoto = dataUrl;
+              photoPreviewImg.src = dataUrl;
+              photoPreview.hidden = false;
+            });
+          });
+        }
+        if (photoRemoveBtn) {
+          photoRemoveBtn.addEventListener('click', function () {
+            currentPhoto = '';
+            photoInput.value = '';
+            photoPreview.hidden = true;
+          });
+        }
+
+        var flatSaveBtn = document.getElementById('flatSaveBtn');
+        var flatFormError = document.getElementById('flatFormError');
+        if (flatSaveBtn) {
+          flatSaveBtn.addEventListener('click', function () {
+            var areaInput = document.getElementById('flatFArea');
+            var priceInput = document.getElementById('flatFPrice');
+            var descInput = document.getElementById('flatFDesc');
+            var area = areaInput.value, price = priceInput.value.trim(), desc = descInput.value.trim();
+            if (!area || !price || !desc) {
+              if (flatFormError) flatFormError.hidden = false;
+              return;
+            }
+            if (flatFormError) flatFormError.hidden = true;
+            var item = {
+              id: 'user-' + Date.now(), area: area, price: price, desc: desc,
+              photo: currentPhoto, poster: posterName()
+            };
+            var items = getUserFlats();
+            items.push(item);
+            saveUserFlats(items);
+
+            var card = flatCardEl(item);
+            flatGrid.insertBefore(card, flatGrid.firstChild);
+            wireNewFlatCard(card, item);
+            renderYourListings();
+
+            areaInput.value = ''; priceInput.value = ''; descInput.value = '';
+            currentPhoto = ''; if (photoInput) photoInput.value = '';
+            if (photoPreview) photoPreview.hidden = true;
+            flatAddForm.hidden = true;
+          });
+        }
+      }
+
+      // ---- view modal: reads whatever the card already shows, so it always matches ----
+      var flatModalOverlay = document.getElementById('flatModalOverlay');
+      function openFlatModal(card) {
+        if (!flatModalOverlay) return;
+        var media = card.querySelector('.card-media');
+        var img = media ? media.querySelector('img') : null;
+        var emoji = media ? media.querySelector('.emoji') : null;
+        document.getElementById('flatModalMedia').innerHTML = img
+          ? '<img src="' + img.src + '" alt="">'
+          : '<span class="emoji">' + (emoji ? emoji.textContent : '🏠') + '</span>';
+        document.getElementById('flatModalArea').textContent = card.querySelector('.chip-cat').textContent;
+        document.getElementById('flatModalTitle').textContent = card.querySelector('h3').textContent;
+        document.getElementById('flatModalPoster').textContent = card.querySelector('.by').textContent;
+        document.getElementById('flatModalDesc').textContent = card.querySelector('.card-body p').textContent;
+        var bits = card.querySelectorAll('.card-info .bit');
+        document.getElementById('flatModalPrice').textContent = bits[0] ? bits[0].textContent.trim() : '';
+        var availWrap = document.getElementById('flatModalAvailWrap');
+        if (bits[1]) {
+          availWrap.hidden = false;
+          document.getElementById('flatModalAvail').textContent = bits[1].textContent.trim();
+        } else if (availWrap) {
+          availWrap.hidden = true;
+        }
+        var modalMsgBtn = document.getElementById('flatModalMessage');
+        var realMsgBtn = card.querySelector('[data-rsvp]');
+        modalMsgBtn.textContent = realMsgBtn ? realMsgBtn.textContent : 'Message';
+        modalMsgBtn.onclick = function () {
+          if (realMsgBtn) realMsgBtn.click();
+          modalMsgBtn.textContent = realMsgBtn ? realMsgBtn.textContent : 'Message';
+        };
+        flatModalOverlay.hidden = false;
+      }
+      function closeFlatModal() { flatModalOverlay.hidden = true; }
+      var flatModalClose = document.getElementById('flatModalClose');
+      if (flatModalClose) flatModalClose.addEventListener('click', closeFlatModal);
+      if (flatModalOverlay) {
+        flatModalOverlay.addEventListener('click', function (e) {
+          if (e.target === flatModalOverlay) closeFlatModal();
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !flatModalOverlay.hidden) closeFlatModal();
+        });
+      }
+      document.querySelectorAll('.flat-view-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () { openFlatModal(btn.closest('.card')); });
+      });
+    }
 
     // ---- full society directory: search + category filter, combined (societies.html) ----
     var socDirGrid = document.getElementById('socDirGrid');
@@ -793,6 +1067,113 @@
           runSearch();
         });
       });
+    }
+
+    // ---- profile: editable name, photo, course, year, bio ----
+    var profileEditForm = document.getElementById('profileEditForm');
+    if (profileEditForm) {
+      var profileAvatar = document.getElementById('profileAvatar');
+      var profileName = document.getElementById('profileName');
+      var profileSub = document.getElementById('profileSub');
+      var profileBio = document.getElementById('profileBio');
+      var defaultName = profileName.textContent;
+      var defaultSubParts = profileSub.textContent.split(' · '); // "1st year · Course · Cardiff University"
+
+      function applyProfileDisplay(u) {
+        var name = (u && u.name) || defaultName;
+        profileName.textContent = name;
+        if (u && u.photo) {
+          profileAvatar.innerHTML = '<img src="' + u.photo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+        } else {
+          profileAvatar.textContent = initialsOf(name);
+        }
+        var year = (u && u.year) || defaultSubParts[0] || '1st year';
+        var course = (u && u.course) || defaultSubParts[1] || 'Computer Science';
+        profileSub.textContent = year + ' · ' + course + ' · Cardiff University';
+        if (u && u.bio) {
+          profileBio.textContent = u.bio;
+          profileBio.hidden = false;
+        } else {
+          profileBio.hidden = true;
+        }
+        // keep the sidebar nav avatar in sync too
+        var navAvatar = document.querySelector('.rail-avatar[href="profile.html"]');
+        if (navAvatar) {
+          if (u && u.photo) {
+            navAvatar.innerHTML = '<img src="' + u.photo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+          } else if (u && u.name) {
+            navAvatar.textContent = initialsOf(u.name);
+          }
+        }
+      }
+      applyProfileDisplay(getUser());
+
+      var editProfileBtn = document.getElementById('editProfileBtn');
+      var peName = document.getElementById('peName');
+      var pePhoto = document.getElementById('pePhoto');
+      var pePhotoPreview = document.getElementById('pePhotoPreview');
+      var pePhotoPreviewImg = document.getElementById('pePhotoPreviewImg');
+      var pePhotoRemove = document.getElementById('pePhotoRemove');
+      var peCourse = document.getElementById('peCourse');
+      var peYear = document.getElementById('peYear');
+      var peBio = document.getElementById('peBio');
+      var peFormError = document.getElementById('peFormError');
+      var peCancelBtn = document.getElementById('peCancelBtn');
+      var peSaveBtn = document.getElementById('peSaveBtn');
+      var editingPhoto = '';
+
+      if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', function () {
+          var u = getUser() || {};
+          peName.value = u.name || defaultName;
+          peCourse.value = u.course || defaultSubParts[1] || '';
+          peYear.value = u.year || defaultSubParts[0] || '1st year';
+          peBio.value = u.bio || '';
+          editingPhoto = u.photo || '';
+          if (editingPhoto) { pePhotoPreviewImg.src = editingPhoto; pePhotoPreview.hidden = false; }
+          else { pePhotoPreview.hidden = true; }
+          if (peFormError) peFormError.hidden = true;
+          profileEditForm.hidden = false;
+        });
+      }
+      if (peCancelBtn) peCancelBtn.addEventListener('click', function () { profileEditForm.hidden = true; });
+      if (pePhoto) {
+        pePhoto.addEventListener('change', function () {
+          var file = pePhoto.files && pePhoto.files[0];
+          if (!file) return;
+          downscaleImage(file, 300, function (dataUrl) {
+            editingPhoto = dataUrl;
+            pePhotoPreviewImg.src = dataUrl;
+            pePhotoPreview.hidden = false;
+          });
+        });
+      }
+      if (pePhotoRemove) {
+        pePhotoRemove.addEventListener('click', function () {
+          editingPhoto = '';
+          pePhoto.value = '';
+          pePhotoPreview.hidden = true;
+        });
+      }
+      if (peSaveBtn) {
+        peSaveBtn.addEventListener('click', function () {
+          var name = peName.value.trim();
+          if (!name) {
+            if (peFormError) peFormError.hidden = false;
+            return;
+          }
+          if (peFormError) peFormError.hidden = true;
+          var u = getUser() || {};
+          u.name = name;
+          u.course = peCourse.value.trim();
+          u.year = peYear.value;
+          u.bio = peBio.value.trim();
+          u.photo = editingPhoto;
+          saveUser(u);
+          applyProfileDisplay(u);
+          profileEditForm.hidden = true;
+        });
+      }
     }
 
     // ---- profile stat strip: numbers respond to real joins/RSVPs, on top of the starting baseline ----

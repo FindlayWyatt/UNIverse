@@ -43,6 +43,8 @@ ICONS = {
     'plus': '<svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>',
     'shield': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>',
     'phone': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.1-8.7A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.7a2 2 0 01-.4 2.1L8 9.9a16 16 0 006 6l1.4-1.4a2 2 0 012.1-.4c.9.3 1.8.5 2.7.6a2 2 0 011.8 2.2z"/></svg>',
+    # wordmark: a bordered four-point star with a bold "U" nested inside it
+    'logo': '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M16 2L19.5 12.5L30 16L19.5 19.5L16 30L12.5 19.5L2 16L12.5 12.5Z" fill="#fff"/><path d="M14.2 13.8v3a1.8 1.8 0 003.6 0v-3" stroke="#000" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
 }
 
 # Pin/badge colour by exact "going" count — green under 20, orange 20-69, red 70+
@@ -313,7 +315,7 @@ def build_soc_directory():
             % (total, search_bar, cat_chips, ''.join(rows)))
 
 def rail(active):
-    btns = ['<div class="rail-logo">U</div>']
+    btns = ['<div class="rail-logo">%s</div>' % ICONS['logo']]
     for href, key, label in NAV:
         cls = 'rail-btn active' if key == active else 'rail-btn'
         btns.append('<a class="%s" href="%s"><span class="tip">%s</span>%s</a>' % (cls, href, label, ICONS[key]))
@@ -345,6 +347,7 @@ def theme_switcher():
         ('cardiff', '#1A0A0C', '#E52713', '#F4C430', 'Cardiff', 'Red &amp; gold, official'),
         ('midnight', '#0B0B0D', '#ED1C24', '#4ECDC4', 'Midnight', 'Red on near-black'),
         ('daylight', '#F5F2ED', '#C8102E', '#0A7EA4', 'Daylight', 'Clean light mode'),
+        ('mono', '#F2F2F2', '#000000', '#0A7EA4', 'Black &amp; White', 'Monochrome — links stay blue'),
     ]
     rows = []
     for set_, a, b, c, name, desc in opts:
@@ -899,16 +902,56 @@ def flat_card(emoji, bg, area, title, poster, desc, price, available, spots, key
             '<p>%s</p>'
             '<div class="card-info"><div class="bit">%s %s pcm</div><div class="bit">%s Available %s</div></div>'
             '<div class="card-foot"><span class="stat">%s</span>'
-            '<button class="pill primary" data-rsvp="Message sent ✓" data-rsvp-key="flatmate-%s">Message</button></div></div></div>'
+            '<div class="post-actions">'
+            '<button type="button" class="pill flat-view-btn">View</button>'
+            '<button class="pill primary" data-rsvp="Message sent ✓" data-rsvp-key="flatmate-%s">Message</button>'
+            '</div></div></div></div>'
             % (area, _price_num(price), bg, area, save_id, save_title, save_meta, ICONS['heart'], emoji, title, poster, desc, ICONS['money'],
                price, ICONS['cal'], available, spots, key))
 
 def build_flatmates():
-    post_cta = ('<div class="widget" style="display:flex;align-items:center;justify-content:space-between;'
-                'gap:16px;flex-wrap:wrap;margin-bottom:22px">'
+    post_form = ('<div class="flat-form" id="flatAddForm" hidden>'
+                '<div class="field"><label>Area</label>'
+                '<select id="flatFArea"><option value="">Select an area…</option>'
+                '<option>Cathays</option><option>Roath</option><option>Heath</option>'
+                '<option>Gabalfa</option><option>Canton</option><option>Cardiff Bay</option>'
+                '<option>Plasnewydd</option><option>Adamsdown</option><option>Other</option></select>'
+                '<div class="field-hint">General area only — no exact address, for your privacy. Sort that out once you\'re actually in touch.</div></div>'
+                '<div class="field"><label>Price (per month)</label>'
+                '<div class="price-input"><span>£</span><input type="number" id="flatFPrice" placeholder="450" min="0"></div></div>'
+                '<div class="field"><label>Description</label>'
+                '<textarea id="flatFDesc" rows="3" placeholder="Tell people about the house, who\'s living there, what you\'re looking for…"></textarea></div>'
+                '<div class="field"><label>Photo</label>'
+                '<input type="file" id="flatFPhoto" accept="image/*">'
+                '<div class="flat-photo-preview" id="flatPhotoPreview" hidden>'
+                '<img id="flatPhotoPreviewImg" alt="">'
+                '<button type="button" class="flat-photo-remove" id="flatPhotoRemove" aria-label="Remove photo">%s</button>'
+                '</div></div>'
+                '<div class="field-error" id="flatFormError" hidden>Add at least an area, a price and a description.</div>'
+                '<div class="cal-form-actions"><button type="button" class="pill" id="flatCancelBtn">Cancel</button>'
+                '<button type="button" class="pill primary" id="flatSaveBtn">Post room</button></div>'
+                '</div>' % ICONS['close'])
+    post_cta = ('<div class="widget" style="margin-bottom:22px">'
+                '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">'
                 '<div><h3 style="margin-bottom:4px">Got a spare room?</h3>'
                 '<div style="color:var(--muted);font-size:.85rem">Post your house — takes two minutes, free for students.</div></div>'
-                '<button class="pill primary">Post your room %s</button></div>' % ICONS['arrow'])
+                '<button type="button" class="pill primary" id="postRoomBtn">Post your room %s</button></div>'
+                '%s</div>' % (ICONS['arrow'], post_form))
+    view_modal = ('<div class="flat-modal-overlay" id="flatModalOverlay" hidden>'
+                 '<div class="flat-modal" id="flatModal">'
+                 '<button type="button" class="flat-modal-close" id="flatModalClose" aria-label="Close">%s</button>'
+                 '<div class="flat-modal-media" id="flatModalMedia"></div>'
+                 '<div class="flat-modal-body">'
+                 '<span class="chip-cat" id="flatModalArea"></span>'
+                 '<h3 id="flatModalTitle"></h3>'
+                 '<div class="by" id="flatModalPoster"></div>'
+                 '<p id="flatModalDesc"></p>'
+                 '<div class="flat-modal-info">'
+                 '<div class="bit">%s <span id="flatModalPrice"></span></div>'
+                 '<div class="bit" id="flatModalAvailWrap">%s <span id="flatModalAvail"></span></div>'
+                 '</div>'
+                 '<button type="button" class="pill primary" id="flatModalMessage" style="width:100%%;justify-content:center">Message</button>'
+                 '</div></div></div>' % (ICONS['close'], ICONS['money'], ICONS['cal']))
     cards = [
         flat_card('🏠', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Cathays',
                    '4-bed house · 1 room free', 'Posted by Priya · 2nd year Biosciences',
@@ -935,11 +978,7 @@ def build_flatmates():
                    'Quieter end of town — 20 min walk or one bus to campus. Good if you want some distance from the Cathays chaos.',
                    '£500–540', 'September', '1 spot left', 'liam'),
     ]
-    body = ('<div class="content">'
-            '<div class="page-head"><div class="ey mono-eyebrow">Student housing</div>'
-            '<h1>Find a housemate</h1>'
-            '<div class="sub">Second and third years with a spare room, posted by the students who live there — not an agency, no fees. '
-            'Browse what\'s going, or list your own room.</div></div>'
+    left = ('<div class="feed-col">'
             '<div class="chips" data-filter-grid="flatGrid"><div class="chip on">All</div>'
             '<div class="chip" data-cat="Cathays">Cathays</div>'
             '<div class="chip" data-cat="Roath">Roath</div>'
@@ -950,6 +989,14 @@ def build_flatmates():
             '<div class="chip" data-maxprice="450">Under £450</div></div>'
             '%s'
             '<div class="grid g3" id="flatGrid">%s</div></div>' % (post_cta, ''.join(cards)))
+    right = ('<aside class="side-col"><div class="widget"><div class="widget-head"><h3>Your Listings</h3></div>'
+            '<div class="your-listings-list" id="yourListingsList"></div></div></aside>')
+    body = ('<div class="content">'
+            '<div class="page-head"><div class="ey mono-eyebrow">Student housing</div>'
+            '<h1>Find a housemate</h1>'
+            '<div class="sub">Second and third years with a spare room, posted by the students who live there — not an agency, no fees. '
+            'Browse what\'s going, or list your own room.</div></div>'
+            '<div class="two-col">%s%s</div>%s</div>' % (left, right, view_modal))
     return page('Find a housemate', 'flatmates', body)
 
 # ================= PAGE: MESSAGES =================
@@ -1008,7 +1055,7 @@ def build_saved():
     return page('Saved', 'profile', body)
 
 def saved_preview_widget():
-    return ('<div class="widget"><div class="widget-head"><h3>Saved</h3>'
+    return ('<div class="widget"><div class="widget-head"><h3>Saved Events</h3>'
             '<a href="saved.html">View all →</a></div>'
             '<div class="saved-list" id="savedPreviewList" data-preview="1"></div></div>')
 
@@ -1236,12 +1283,38 @@ def build_profile():
         grows.append('<div class="%s" style="justify-content:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)">'
                      '%s<div><div class="txt" style="font-weight:700">%s</div>'
                      '<div style="color:var(--muted);font-size:.78rem">%s</div></div></div>' % (cls, box, txt, sub))
+    edit_form = (
+        '<div class="profile-edit-form" id="profileEditForm" hidden>'
+        '<div class="field"><label>Name</label><input type="text" id="peName" placeholder="Your name"></div>'
+        '<div class="field"><label>Profile picture</label>'
+        '<input type="file" id="pePhoto" accept="image/*">'
+        '<div class="flat-photo-preview" id="pePhotoPreview" hidden>'
+        '<img id="pePhotoPreviewImg" alt="">'
+        '<button type="button" class="flat-photo-remove" id="pePhotoRemove" aria-label="Remove photo">%s</button>'
+        '</div></div>'
+        '<div class="cal-form-row">'
+        '<div class="field"><label>Course</label><input type="text" id="peCourse" placeholder="e.g. Computer Science"></div>'
+        '<div class="field"><label>Year</label><select id="peYear">'
+        '<option>1st year</option><option>2nd year</option><option>3rd year</option>'
+        '<option>4th year</option><option>Postgraduate</option></select></div>'
+        '</div>'
+        '<div class="field"><label>Bio <span style="color:var(--muted);font-weight:400">(optional)</span></label>'
+        '<textarea id="peBio" rows="2" placeholder="A line about yourself…"></textarea></div>'
+        '<div class="field-error" id="peFormError" hidden>Add at least a name.</div>'
+        '<div class="cal-form-actions"><button type="button" class="pill" id="peCancelBtn">Cancel</button>'
+        '<button type="button" class="pill primary" id="peSaveBtn">Save profile</button></div>'
+        '</div>' % ICONS['close'])
     left = ('<div class="feed-col">'
-            '<div class="page-head" style="display:flex;align-items:center;gap:16px">'
-            '<div class="rail-avatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">FW</div>'
-            '<div><h1 style="margin-bottom:4px">Findlay Wyatt</h1>'
-            '<div class="sub">1st year · Computer Science · Cardiff University</div></div>'
-            '<button class="pill" id="logoutBtn" type="button" style="margin-left:auto">Log out</button></div>'
+            '<div class="page-head" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">'
+            '<div class="rail-avatar" id="profileAvatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">FW</div>'
+            '<div style="flex:1;min-width:160px"><h1 style="margin-bottom:4px" id="profileName">Findlay Wyatt</h1>'
+            '<div class="sub" id="profileSub">1st year · Computer Science · Cardiff University</div>'
+            '<div class="sub" id="profileBio" style="margin-top:4px" hidden></div></div>'
+            '<div style="display:flex;gap:8px">'
+            '<button class="pill" id="editProfileBtn" type="button">Edit profile</button>'
+            '<button class="pill" id="logoutBtn" type="button">Log out</button>'
+            '</div></div>'
+            + edit_form
             + stat_strip +
             '<div class="widget"><div class="widget-head"><h3>Your uni journey</h3>'
             '<span class="mono-eyebrow">3 of 6 done</span></div>'
