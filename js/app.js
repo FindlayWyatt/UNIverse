@@ -30,6 +30,9 @@
       saveCalendarItems(items);
     }
   }
+  function removeFromCalendar(id) {
+    saveCalendarItems(getCalendar().filter(function (i) { return i.id !== id; }));
+  }
 
   // ---- RSVP persistence: remembers a clicked [data-rsvp] button across reloads ----
   // Stores a timestamp (not just a flag) so notifications can show "X ago".
@@ -38,6 +41,22 @@
   }
   function setRsvpDone(key) {
     try { window.localStorage.setItem('uv-rsvp-' + key, String(Date.now())); } catch (e) {}
+  }
+  function clearRsvpDone(key) {
+    try { window.localStorage.removeItem('uv-rsvp-' + key); } catch (e) {}
+  }
+
+  // ---- NOTIF READ STATE: for notification kinds that aren't tied to an existing
+  // read flag (societies joined, upcoming calendar events) — lets "mark all read"
+  // actually stick, instead of the same items reappearing every time you reopen the panel ----
+  function isNotifRead(id) {
+    try { return (JSON.parse(window.localStorage.getItem('uv-notif-read')) || []).indexOf(id) !== -1; } catch (e) { return false; }
+  }
+  function markNotifRead(id) {
+    try {
+      var arr = JSON.parse(window.localStorage.getItem('uv-notif-read')) || [];
+      if (arr.indexOf(id) === -1) { arr.push(id); window.localStorage.setItem('uv-notif-read', JSON.stringify(arr)); }
+    } catch (e) {}
   }
 
   // ---- SAVED: a personal list, built from anything saved anywhere on the site ----
@@ -120,6 +139,7 @@
     var notifPanel = document.getElementById('notifPanel');
     var notifDot = document.getElementById('notifDot');
     var notifList = document.getElementById('notifList');
+    var notifMarkAll = document.getElementById('notifMarkAll');
     if (notifBtn && notifPanel && notifList) {
       function notifTimeAgo(ts) {
         var mins = Math.floor((Date.now() - ts) / 60000);
@@ -149,13 +169,20 @@
           + '<div class="notif-meta">' + meta + '</div></div></a>';
       }
 
+      // ids of everything currently unread, so "mark all read" knows what to clear
+      var unreadThreadSlugs = [];
+      var unreadNotifIds = [];
+
       function buildNotifications() {
+        unreadThreadSlugs = [];
+        unreadNotifIds = [];
         var messagesHtml = [];
         if (window.UV_THREADS) {
           window.UV_THREADS.forEach(function (th) {
             var read = false;
             try { read = window.localStorage.getItem('uv-msg-read-' + th.slug) !== null; } catch (e) {}
             if (th.unread && !read) {
+              unreadThreadSlugs.push(th.slug);
               messagesHtml.push(notifItem('%%CHAT%%', th.name + ': ' + th.preview, 'New message', 'messages.html'));
             }
           });
@@ -169,6 +196,9 @@
             .sort(function (a, b) { return b.ts - a.ts; })
             .slice(0, 5)
             .forEach(function (j) {
+              var id = 'soc:' + j.slug;
+              if (isNotifRead(id)) return;
+              unreadNotifIds.push(id);
               var match = (window.UV_SEARCH || []).find(function (i) { return i.u === 'society-' + j.slug + '.html'; });
               var name = match ? match.t : j.slug;
               societiesHtml.push(notifItem('%%SOC%%', "You're in! Welcome to " + name, j.ts ? notifTimeAgo(j.ts) : 'Joined', 'society-' + j.slug + '.html'));
@@ -183,6 +213,9 @@
             .sort(function (a, b) { return a.ev.date < b.ev.date ? -1 : 1; })
             .slice(0, 5)
             .forEach(function (x) {
+              var id = 'cal:' + x.ev.id;
+              if (isNotifRead(id)) return;
+              unreadNotifIds.push(id);
               var meta = x.when + (x.ev.time ? ' · ' + x.ev.time : '');
               upcomingHtml.push(notifItem('%%CAL%%', x.ev.title, meta, 'profile.html'));
             });
@@ -190,6 +223,7 @@
 
         var total = messagesHtml.length + societiesHtml.length + upcomingHtml.length;
         notifDot.hidden = total === 0;
+        if (notifMarkAll) notifMarkAll.hidden = total === 0;
 
         if (total === 0) {
           notifList.innerHTML = '<div class="notif-empty">You\'re all caught up — nothing new.</div>';
@@ -215,6 +249,16 @@
       document.addEventListener('click', function (e) {
         if (!notifPanel.contains(e.target) && e.target !== notifBtn) notifPanel.hidden = true;
       });
+      if (notifMarkAll) {
+        notifMarkAll.addEventListener('click', function (e) {
+          e.stopPropagation();
+          unreadThreadSlugs.forEach(function (slug) {
+            try { window.localStorage.setItem('uv-msg-read-' + slug, '1'); } catch (e2) {}
+          });
+          unreadNotifIds.forEach(markNotifRead);
+          buildNotifications();
+        });
+      }
     }
 
     // ---- filter chips ----
@@ -248,27 +292,43 @@
     });
 
     // ---- RSVP / action button feedback ----
-    // Remembers itself across reloads: buttons tied to a calendar entry key off
-    // title+date (matching the calendar's own id), others use an explicit
-    // data-rsvp-key. Buttons with neither (e.g. venue/society ones, which have
-    // their own dedicated persistence already) just keep today's session-only feel.
+    // Toggles both ways: click once to RSVP, click again to undo (a wrong tap or a
+    // change of mind shouldn't be permanent). Remembers itself across reloads:
+    // buttons tied to a calendar entry key off title+date (matching the calendar's
+    // own id), others use an explicit data-rsvp-key. The venue map's own RSVP
+    // buttons (.venue-rsvp) are handled separately below, alongside the pin/count logic.
     document.querySelectorAll('[data-rsvp]').forEach(function (btn) {
+      if (btn.classList.contains('venue-rsvp')) return;
       var key = btn.dataset.rsvpKey
         || (btn.dataset.calTitle && btn.dataset.calDate ? btn.dataset.calTitle + '|' + btn.dataset.calDate : null);
+      var calId = (btn.dataset.calTitle && btn.dataset.calDate) ? btn.dataset.calTitle + '|' + btn.dataset.calDate : null;
+      var beforeLabel = btn.textContent;
 
-      if (key && isRsvpDone(key)) {
+      function setDone() {
         btn.dataset.done = '1';
         btn.textContent = btn.dataset.rsvp;
+        btn.title = 'Click to cancel';
+      }
+      function setUndone() {
+        btn.dataset.done = '0';
+        btn.textContent = beforeLabel;
+        btn.removeAttribute('title');
       }
 
+      if (key && isRsvpDone(key)) setDone();
+
       btn.addEventListener('click', function () {
-        if (btn.dataset.done === '1') return;
-        btn.dataset.done = '1';
-        btn.textContent = btn.dataset.rsvp;
+        if (btn.dataset.done === '1') {
+          setUndone();
+          if (key) clearRsvpDone(key);
+          if (calId) removeFromCalendar(calId);
+          return;
+        }
+        setDone();
         if (key) setRsvpDone(key);
-        if (btn.dataset.calTitle && btn.dataset.calDate) {
+        if (calId) {
           addToCalendar({
-            id: btn.dataset.calTitle + '|' + btn.dataset.calDate,
+            id: calId,
             title: btn.dataset.calTitle,
             date: btn.dataset.calDate,
             time: btn.dataset.calTime || '',
@@ -389,6 +449,65 @@
       });
     });
 
+    // ---- full society directory: search + category filter, combined (societies.html) ----
+    var socDirGrid = document.getElementById('socDirGrid');
+    if (socDirGrid) {
+      var socDirRows = Array.from(socDirGrid.querySelectorAll('.soc-row'));
+      var socDirSearch = document.getElementById('socDirSearch');
+      var socDirClear = document.getElementById('socDirSearchClear');
+      var socDirMatchCount = document.getElementById('socDirMatchCount');
+      var socDirEmpty = document.getElementById('socDirEmpty');
+      var socDirEmptyQuery = document.getElementById('socDirEmptyQuery');
+      var socDirChips = document.querySelectorAll('.soc-dir-chips .chip');
+      var activeCat = '';
+
+      function applySocDirFilter() {
+        var q = (socDirSearch.value || '').trim().toLowerCase();
+        if (socDirClear) socDirClear.classList.toggle('show', q.length > 0);
+        var visible = 0;
+        socDirRows.forEach(function (row) {
+          var matchesCat = !activeCat || row.dataset.cat === activeCat;
+          var matchesQuery = !q || row.dataset.search.indexOf(q) !== -1;
+          var show = matchesCat && matchesQuery;
+          row.hidden = !show;
+          if (show) visible++;
+        });
+        if (socDirMatchCount) socDirMatchCount.textContent = q ? (visible + (visible === 1 ? ' match' : ' matches')) : '';
+        if (socDirEmpty) socDirEmpty.hidden = visible > 0;
+        if (socDirEmptyQuery) socDirEmptyQuery.textContent = socDirSearch.value.trim();
+      }
+      if (socDirSearch) {
+        socDirSearch.addEventListener('input', applySocDirFilter);
+        if (socDirClear) {
+          socDirClear.addEventListener('click', function () {
+            socDirSearch.value = '';
+            applySocDirFilter();
+            socDirSearch.focus();
+          });
+        }
+      }
+      socDirChips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          activeCat = chip.dataset.cat || '';
+          applySocDirFilter();
+        });
+      });
+
+      // ---- deep link from sitewide search: societies.html?soc=<slug> scrolls straight to it ----
+      var wantedSlug = new URLSearchParams(window.location.search).get('soc');
+      if (wantedSlug) {
+        var wantedBtn = socDirGrid.querySelector('.soc-join[data-society="' + wantedSlug + '"]');
+        var wantedRow = wantedBtn ? wantedBtn.closest('.soc-row') : null;
+        if (wantedRow) {
+          setTimeout(function () {
+            wantedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            wantedRow.classList.add('soc-row-flash');
+            setTimeout(function () { wantedRow.classList.remove('soc-row-flash'); }, 2200);
+          }, 100);
+        }
+      }
+    }
+
     // ---- society chat: post your own message into the group thread ----
     var socChatInput = document.querySelector('.soc-chat-field');
     var socChatBody = document.querySelector('.soc-chat');
@@ -432,6 +551,9 @@
       }
       function setGoing(name) {
         try { window.sessionStorage.setItem(goingKey(name), '1'); } catch (e) {}
+      }
+      function clearGoing(name) {
+        try { window.sessionStorage.removeItem(goingKey(name)); } catch (e) {}
       }
 
       // pin/badge colour by exact going count — green under 20, orange 20-69, red 70+
@@ -484,13 +606,14 @@
           return '<strong>' + name + '</strong><span class="popup-cat">' + cat + '</span>'
             + '<div class="popup-going"><i class="busy-dot" style="background:' + currentColor() + '"></i>' + count + ' ' + goingWord + '</div>'
             + ticketHtml
-            + '<button class="pill primary popup-rsvp"' + (going ? ' disabled' : '') + '>'
+            + '<button class="pill primary popup-rsvp"' + (going ? ' title="Click to cancel"' : '') + '>'
             + (going ? "You're in 🎉" : rsvpWord) + '</button>';
         }
 
         var marker = L.marker([lat, lng], { icon: pinIcon(currentColor()) }).addTo(venueMap).bindPopup(popupHtml());
 
         var cardBtn = card.querySelector('.venue-rsvp');
+        var cardBtnBeforeLabel = cardBtn ? cardBtn.textContent : '';
         var dotEl = card.querySelector('.busy-dot');
         var numEl = card.querySelector('.going-count');
 
@@ -504,12 +627,17 @@
 
         marker.on('popupopen', function (e) {
           var popupBtn = e.popup.getElement().querySelector('.popup-rsvp');
-          if (popupBtn && !popupBtn.disabled) {
+          if (popupBtn) {
             popupBtn.addEventListener('click', function () {
-              setGoing(name);
+              if (isGoing(name)) {
+                clearGoing(name);
+                removeFromCalendar('venue|' + name);
+              } else {
+                setGoing(name);
+                addVenueToCalendar();
+              }
               refreshUI();
               syncCardButton();
-              addVenueToCalendar();
             });
           }
         });
@@ -523,17 +651,25 @@
         }
 
         function syncCardButton() {
-          if (cardBtn && isGoing(name)) {
-            cardBtn.dataset.done = '1';
-            cardBtn.textContent = cardBtn.dataset.rsvp;
-          }
+          if (!cardBtn) return;
+          var going = isGoing(name);
+          cardBtn.dataset.done = going ? '1' : '0';
+          cardBtn.textContent = going ? cardBtn.dataset.rsvp : cardBtnBeforeLabel;
+          if (going) cardBtn.title = 'Click to cancel';
+          else cardBtn.removeAttribute('title');
         }
         syncCardButton();
         if (cardBtn) {
           cardBtn.addEventListener('click', function () {
-            setGoing(name);
+            if (isGoing(name)) {
+              clearGoing(name);
+              removeFromCalendar('venue|' + name);
+            } else {
+              setGoing(name);
+              addVenueToCalendar();
+            }
             refreshUI();
-            addVenueToCalendar();
+            syncCardButton();
           });
         }
 
@@ -912,6 +1048,15 @@
         var existing = null;
         try { existing = JSON.parse(localStorage.getItem('uv-user') || 'null'); } catch (e2) {}
         goToApp({ name: existing && existing.name, username: existing && existing.username, email: email });
+      });
+    }
+
+    // ---- log out ----
+    var logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
+        try { window.localStorage.removeItem('uv-user'); } catch (e) {}
+        window.location.href = 'index.html';
       });
     }
   });

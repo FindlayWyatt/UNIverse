@@ -111,7 +111,11 @@ a{color:inherit;text-decoration:none}
 .notif-wrap{position:relative}
 .notif-panel{position:absolute;top:calc(100% + 10px);right:0;width:340px;background:var(--card-2);border:1px solid var(--line-2);border-radius:16px;box-shadow:0 14px 44px rgba(0,0,0,.45);z-index:100;max-height:460px;overflow-y:auto;padding:16px}
 .notif-panel[hidden]{display:none}
-.notif-panel h4{font-family:'Archivo';font-weight:800;font-size:.9rem;margin-bottom:4px}
+.notif-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.notif-panel h4{font-family:'Archivo';font-weight:800;font-size:.9rem;margin-bottom:0}
+.notif-mark-all{background:none;border:none;color:var(--lime);font-family:'Archivo';font-weight:700;font-size:.74rem;cursor:pointer;padding:2px 0;white-space:nowrap}
+.notif-mark-all:hover{text-decoration:underline}
+.notif-mark-all[hidden]{display:none}
 .notif-section-label{font-family:'Space Grotesk';font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 0 4px}
 .notif-section-label:first-of-type{margin-top:12px}
 .notif-item{display:flex;gap:10px;padding:9px 6px;border-radius:10px;text-decoration:none;transition:.12s}
@@ -294,6 +298,27 @@ a{color:inherit;text-decoration:none}
 .soc-view:hover{background:var(--sky);color:var(--ink)}
 .soc-view svg{width:13px;height:13px}
 .soc-view[hidden]{display:none}
+
+/* ---------- FULL SOCIETY DIRECTORY (societies.html) ---------- */
+.soc-dir-head{margin:38px 0 16px;padding-top:28px;border-top:1px solid var(--line)}
+.soc-dir-head h2{font-family:'Archivo';font-weight:900;font-size:1.4rem;letter-spacing:-.01em;margin-bottom:6px}
+.soc-dir-head .sub{color:var(--muted);font-size:.88rem;line-height:1.5;max-width:640px}
+.soc-dir-search{margin:16px 0}
+.soc-dir-chips{max-height:110px;overflow-y:auto}
+.soc-dir-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.soc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.soc-row[hidden]{display:none}
+.soc-row-flash{animation:soc-row-flash 2.2s ease-out}
+@keyframes soc-row-flash{
+  0%,20%{border-color:var(--lime);box-shadow:0 0 0 3px color-mix(in srgb,var(--lime) 35%,transparent)}
+  100%{border-color:var(--line);box-shadow:none}
+}
+.soc-row-ava{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:.72rem;color:var(--ink);flex-shrink:0}
+.soc-row-body{min-width:0;flex:1}
+.soc-row-name{font-weight:700;font-size:.85rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.soc-row-cat{color:var(--muted);font-size:.72rem;margin-top:3px}
+.soc-row .soc-join{flex-shrink:0}
+@media(max-width:640px){.soc-dir-grid{grid-template-columns:1fr}}
 
 /* ---------- SOCIETY DETAIL PAGE ---------- */
 .soc-page-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}

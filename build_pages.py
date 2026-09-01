@@ -2,6 +2,7 @@
 """Generates the Uni-Verse Cardiff site pages with a shared shell."""
 import os
 import json
+import re
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 
@@ -91,17 +92,9 @@ SEARCH_INDEX = [
     {'t': 'Exeter vs Cardiff', 'c': 'BUCS', 'u': 'bucs.html', 'd': 'Wed 4 Nov · Away · Super Rugby'},
     # Societies
     {'t': 'Film Society', 'c': 'Society', 'u': 'society-film.html', 'd': '1,240 members'},
-    {'t': 'Hiking & Mountaineering', 'c': 'Society', 'u': 'society-hiking.html', 'd': '860 members'},
-    {'t': 'Entrepreneurs Society', 'c': 'Society', 'u': 'society-entrepreneurs.html', 'd': '1,510 members'},
-    {'t': 'Drama Society', 'c': 'Society', 'u': 'society-drama.html', 'd': '740 members'},
-    {'t': 'Football Club', 'c': 'Society', 'u': 'society-football.html', 'd': '2,100 members'},
-    {'t': 'International Students', 'c': 'Society', 'u': 'society-international.html', 'd': '1,880 members'},
     {'t': 'Netball Club', 'c': 'Society', 'u': 'society-netball.html', 'd': '980 members'},
     {'t': 'Music Society', 'c': 'Society', 'u': 'society-music.html', 'd': '690 members'},
-    {'t': 'Debate Society', 'c': 'Society', 'u': 'society-debate.html', 'd': '410 members'},
-    {'t': 'RAG Society', 'c': 'Society', 'u': 'society-rag.html', 'd': '560 members'},
     {'t': 'Photography Society', 'c': 'Society', 'u': 'society-photography.html', 'd': '730 members'},
-    {'t': 'Pride Society', 'c': 'Society', 'u': 'society-pride.html', 'd': '890 members'},
     # Discounts
     {'t': 'Brewhouse Coffee', 'c': 'Discount', 'u': 'discounts.html', 'd': 'Cathays · 25% off'},
     {'t': 'Got Beef', 'c': 'Discount', 'u': 'discounts.html', 'd': 'City Centre · Free side'},
@@ -166,6 +159,159 @@ LEAFLET_JS = '<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></sc
 # Cardiff SU's own societies page — the official place to actually join (used on the Societies page)
 SU_SOCIETIES_URL = 'https://www.cardiffstudents.com/activities/societies/'
 
+# The full real society directory, pulled from the Cardiff SU societies page above (categories and
+# names as listed there). The dozen "featured" societies above already have their own full page
+# (chat/timetable/events/kit) — 'Film Society', 'Music Society' and 'Photography Society' are excluded
+# here since they're already those featured cards under a matching real name, so they're not duplicated.
+# 'Society Executive Committee' is left out too — it's the SU's own governance body, not a society to join.
+REAL_SOCIETIES = [
+    ('Activity & Appreciation', [
+        'AI Safety Cardiff University', 'AIESEC', 'Airsoft Society', 'Alternative Music Society',
+        'Anime Society', 'Baking Society', 'Book Club', 'Bridge Society',
+        'Cardiff Regular and Irregular Tabletop Society', 'Cardiff Students for Sustainability',
+        'Cardiff University Investment Society', 'Cardiff University Pilates and Wellbeing Society',
+        'Coffee Society', 'Creative Writing Society', 'DIY Society', 'Doctor Who Society', 'Dog Society',
+        'Esports Society', 'Film Production Society', 'Finance and Trading', 'Formula One Society',
+        'FurSoc', 'Gaming Society', 'Grimsoc', 'Hooked Society', 'James Kimberley Chess Society',
+        'Lana Del Rey Society', 'Make a Smile Cardiff', 'Medieval Re-enactment Society',
+        'Model United Nations Society', 'Musicals Society', 'Ornithological Society', 'Poker Society',
+        'Public Speaking Society', 'Quiz Society', 'Real Ale Society', 'Sci-Fi & Fantasy Society',
+        'Skate Society', 'SoberSoc', 'Taylor Swift Society', 'Tegestology Society', 'Twilight Society',
+        'Vegetarian & Vegan Society', 'Vocaloid Society', 'Wet Dippers Wild Swimming Society',
+        'Women in Music Society', 'Y Gym Gym', 'Yoga Society',
+    ]),
+    ('Course Based', [
+        'Ancient History, Archaeology & Conservation Society', 'Bar Society', 'Bioscience Society',
+        'Business School Society', 'Chaos Society', 'Chemistry Society', 'CyberSoc', 'Earth Society',
+        'Engineering Society', 'French Society', 'German Society', 'HistorySoc', 'Japanese Society',
+        'Law Society Cardiff', 'Maths Society', 'Optometry Society', 'Philosophy Society',
+        'Politics Society', 'Psychology Society', 'SAWSA - Architecture Society', 'Social Sciences Society',
+        'Spanish and Latin American Society', 'TECSoc', 'Women in Law Society', 'Women in STEM',
+        'WPSA Pharmaceutical Society',
+    ]),
+    ('Cultural & International', [
+        'Abacus', 'African Caribbean Medical Association', 'African Caribbean Society', 'Asian Society',
+        'Bangladesh Society', 'Cardiff Malayali Society', 'Cardiff University American Students Society',
+        'Cardiff West Indian Society', 'Chinese Society', 'Filipino Society', 'Hong Kong Society',
+        'Indian Society', 'Indonesian Society', 'Irish Society', 'Kurdish Society',
+        'Malaysian Students Society', 'Middle Eastern and North African Society', 'Nepali Society',
+        'Pakistani Society', 'Pashtun Society', 'Persian/Iranian Society', 'Polish Society',
+        'Punjabi Society', 'Russian Speaking Society', 'Saudi Society', 'Singapore Society',
+        'Sri Lankan Society', 'Tamil Society', 'Turkish Society', 'Ukrainian Society',
+    ]),
+    ('Discussion, Campaign & Awareness', [
+        'ATMA Society', 'Cardiff LINKS', 'CoppaFeel Society', 'CU Equal Opportunities Law Society',
+        'CU Pride (LGBT+ Society)', 'Debating Society', 'Feminist Society',
+        'Friends of David Nott Foundation', 'Marrow Society',
+        'Neurodiverse Opportunity, Visibility and Inclusivity Society', 'Raise and Give', 'Sapphic Society',
+        'STAR - Student Action for Refugees', 'Students for Global Health Society',
+        'Students for Organ Donation', 'Sustainable Fashion Society', 'TANGGS',
+        'Wildlife and Conservation Society', 'Women Leaders of Afrika Society',
+    ]),
+    ('Health Based', [
+        'Cardiff Anaesthetics, Perioperative and Intensive Care Society (CAPS)',
+        'Cardiff Healthcare International Perspectives', 'Cardiff Pre-hospital and Emergency Medicine Society',
+        'Cardiff Student Psychiatry Society', 'Cardiff University Acute Medicine Society',
+        'Cardiff University Women in Surgery Society', 'Cardiothoracics Society',
+        'Christian Medical Fellowship', 'Clinical Neuroscience Society', 'Clwb y Mynydd Bychan',
+        'Dermatology Society', 'GP Society', 'MedEd', 'MedSoc', 'Midwifery Society', 'NurSoc',
+        'Ophthalmology Society', 'PACS', 'Paediatric Society', 'Pharmacology Society',
+        'Sports and Exercise Medicine', 'Surgical Society', 'Teddy Bear Hospital',
+        'Wilderness and Expedition Medicine', "Women's Health, Obstetrics and Gynaecology Society",
+    ]),
+    ('Performance & Artistic', [
+        'A Cappella Society', 'Act One Drama Society', 'Art Society', 'Belly Dancing Society',
+        'Blank Verse', 'Bollywood Dance Society', 'Brass Band Society', 'Broadway Dance Society',
+        'CU Heels Dance Society', 'Expression Dance Society', 'FAD (Dance Society)',
+        'Healthcare Drama Society', 'Healthcare Music Society', 'Jazz Society',
+        'KChoreo - KPop Dance Society', 'Live Music Society', 'Show Choir', 'Slash Hip Hop Dance',
+        'Traffic DJ Society', 'Windband',
+    ]),
+    ('Political & Ideological', [
+        'Ahlul Bayt Society', 'Cardiff University Catholic Society', 'Christian Union',
+        'Green Party Society', 'Islamic Society', 'Jewish Society', 'Kharis On Campus',
+        'Labour Students Society', 'Marxist Society', 'NHSF Cardiff Hindu Society', 'Sikh Society',
+    ]),
+    ('Student Led Services', ['Stronger Together', 'Student Minds']),
+    ('Student Media', ['CUTV', 'Gair Rhydd', 'Quench', 'Xpress Radio']),
+    ('Other', ['Housing Action', 'Medics Grad Ball', 'Nightline', 'SHAG', 'Web Design Society']),
+    # Sports clubs, from the Athletic Union's own club list — a separate part of the SU from the
+    # societies above. 'Netball Club' is excluded since it's already the featured card above.
+    ('Sport', [
+        'Aerial Fitness', 'Aikido Club', 'American Football Club', 'Archery Club', 'Athletics Club',
+        'Badminton Club', 'Baseball and Softball Club', 'Boxing Club', 'Cardiff Medicals Rugby',
+        'Cardiff Snakecharmers Cheerleading', 'Cardiff University Barbell Club',
+        'Caving & Canyoning Club', 'Clay Pigeon Shooting Club', 'Cuesports Club', 'Cycling Club',
+        'Dancesport Club', 'Darts Club', 'Dodgeball Club', 'Equestrian Club', 'Fencing Club',
+        'Gaelic Football Club', 'Golf Club', 'Gymnastics Club', 'Hiking Club', 'Ice Hockey Club',
+        'Ice Skating Club', 'Jiu Jitsu Club', 'Karate Club', 'Kayaking Club', 'Kickboxing Club',
+        'Korfball Club', 'Kung Fu Club', 'Lacrosse Club', 'Medics Basketball Club',
+        'Medics Football Club', "Medics Men's Hockey Club", 'Medics Netball Club',
+        'Medics Squash Club', "Medics Women's Hockey Club", "Men's Basketball Club",
+        "Men's Cricket Programme", "Men's Football Club", "Men's Futsal Club", "Men's Hockey Club",
+        "Men's Rugby Club", 'Mixed Martial Arts (MMA)', 'Motorsports Club', 'Mountain Biking Club',
+        'Mountaineering Club', 'Padel Club', 'Polo Club', 'Rifle and Pistol Club', 'Rounders Club',
+        'Rowing Club', 'Rugby League Club', 'Sailing Club', 'Scuba Diving Club', 'Snowsports Club',
+        'Squash Club', 'Surf Sports', 'Swimming & Waterpolo Club', 'Table Tennis Club',
+        'Taekwon-Do Club', 'Tennis Club', 'Touch Rugby Club', 'Trampoline Club', 'Triathlon Club',
+        'Ultimate Frisbee Club', 'Volleyball Club', 'Windsurfing Club', "Women's Basketball Club",
+        "Women's Cricket Club", "Women's Football Club", "Women's Hockey Club", "Women's Rugby Club",
+    ]),
+]
+
+def _slugify(name):
+    s = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return 'su-' + s
+
+# One or two letters standing in for a real logo, same idea as the initials used for people
+# (e.g. the "FW" profile avatar) — just applied to a society name instead.
+def _initials(name):
+    words = re.findall(r"[A-Za-z0-9]+", name)
+    if not words:
+        return '?'
+    if len(words) == 1:
+        return words[0][:2].upper()
+    return (words[0][0] + words[1][0]).upper()
+
+_ROW_COLORS = ['var(--lime)', 'var(--sky)', 'var(--coral)', 'var(--amber)']
+
+# Feed the whole real directory into the sitewide topbar search too, so any of the 265 real
+# societies/sports clubs turns up from anywhere on the site, not just the Societies page itself.
+for _cat, _names in REAL_SOCIETIES:
+    for _name in _names:
+        SEARCH_INDEX.append({'t': _name, 'c': _cat, 'u': 'societies.html?soc=' + _slugify(_name), 'd': _cat})
+
+def soc_dir_row(name, category, color):
+    slug = _slugify(name)
+    return ('<div class="soc-row" data-cat="%s" data-search="%s">'
+            '<div class="soc-row-ava" style="background:%s">%s</div>'
+            '<div class="soc-row-body"><div class="soc-row-name">%s</div>'
+            '<div class="soc-row-cat">%s</div></div>'
+            '<button class="soc-join" data-society="%s">Join</button></div>'
+            % (category, name.lower(), color, _initials(name), name, category, slug))
+
+def build_soc_directory():
+    rows = []
+    for i, (category, names) in enumerate(REAL_SOCIETIES):
+        color = _ROW_COLORS[i % len(_ROW_COLORS)]
+        for name in names:
+            rows.append(soc_dir_row(name, category, color))
+    cat_chips = ''.join('<div class="chip" data-cat="%s">%s</div>' % (c, c) for c, _ in REAL_SOCIETIES)
+    total = sum(len(names) for _, names in REAL_SOCIETIES)
+    search_bar = ('<div class="map-search soc-dir-search">%s'
+                  '<input type="text" id="socDirSearch" autocomplete="off" '
+                  'placeholder="Search all %s Cardiff societies by name…">'
+                  '<span class="match-count" id="socDirMatchCount"></span>'
+                  '<button class="clear-search" id="socDirSearchClear" aria-label="Clear search">%s</button></div>'
+                  % (ICONS['search'], total, ICONS['close']))
+    return ('<div class="soc-dir-head"><h2>Every Cardiff society &amp; sports club</h2>'
+            '<div class="sub">The full Cardiff SU societies directory, plus every Athletic Union sports club — %s in total. These are simple, joinable listings; the twelve above are the ones with their own space on Uni-Verse.</div></div>'
+            '%s'
+            '<div class="chips soc-dir-chips" data-filter-grid="socDirGrid"><div class="chip on" data-cat="">All</div>%s</div>'
+            '<div class="soc-dir-grid" id="socDirGrid">%s</div>'
+            '<div class="empty-state" id="socDirEmpty" hidden>No societies match “<span id="socDirEmptyQuery"></span>”.</div>'
+            % (total, search_bar, cat_chips, ''.join(rows)))
+
 def rail(active):
     btns = ['<div class="rail-logo">U</div>']
     for href, key, label in NAV:
@@ -186,7 +332,9 @@ def topbar():
             '<div class="notif-wrap">'
             '<button class="icon-btn" id="notifBtn" aria-label="Notifications"><span class="dot" id="notifDot" hidden></span>%s</button>'
             '<div class="notif-panel" id="notifPanel" hidden>'
-            '<h4>Notifications</h4><div class="notif-list" id="notifList"></div>'
+            '<div class="notif-panel-head"><h4>Notifications</h4>'
+            '<button class="notif-mark-all" id="notifMarkAll" type="button" hidden>Mark all read</button></div>'
+            '<div class="notif-list" id="notifList"></div>'
             '</div></div>'
             '<a class="icon-btn" href="messages.html" aria-label="Messages">%s</a>'
             '</div></header>' % (ICONS['search'], ICONS['bell'], ICONS['chat']))
@@ -281,8 +429,8 @@ def sidebar_week():
 def sidebar_socs():
     socs = [
         ('🎬', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Film Society', '+180 joined this week'),
-        ('🥾', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Hiking & Mountaineering', '+142 joined this week'),
-        ('💼', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Entrepreneurs Society', '+119 joined this week'),
+        ('🏐', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Netball Club', '+142 joined this week'),
+        ('🎌', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Anime Society', '+119 joined this week'),
     ]
     rows = []
     for emoji, bg, name, meta in socs:
@@ -408,7 +556,7 @@ def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going,
 def build_events():
     freshers_cards = [
         event_card('🎉','linear-gradient(135deg,var(--coral),var(--amber))','Freshers Week','', 'Move-In Day &amp; Welcome BBQ','Cardiff University',True,'Mon 21 Sep · 12pm','Halls of Residence','340','I\'m going','2026-09-21','var(--coral)', freshers=True),
-        event_card('🌍','linear-gradient(135deg,var(--sky),var(--amber))','Freshers Week','', 'International Students Welcome Social','International Students',True,'Tue 22 Sep · 5pm','Y Plas','210','I\'m going','2026-09-22','var(--sky)', freshers=True),
+        event_card('🌍','linear-gradient(135deg,var(--sky),var(--amber))','Freshers Week','', 'International Students Welcome Social','Cardiff SU',True,'Tue 22 Sep · 5pm','Y Plas','210','I\'m going','2026-09-22','var(--sky)', freshers=True),
         event_card('🏃','linear-gradient(135deg,var(--lime),var(--sky))','Freshers Week','', 'Give It A Go: Try a Sport','Athletic Union',True,'Thu 24 Sep · 1pm','Sports Fields, Llanrumney','185','I\'m going','2026-09-24','var(--lime)', freshers=True),
         event_card('🎪','linear-gradient(135deg,var(--amber),var(--coral))','Freshers Week','', 'Freshers Fair','Cardiff SU',True,'Mon 28 Sep · 10am','Y Plas &amp; SU','1.2k','I\'m going','2026-09-28','var(--amber)', freshers=True),
         event_card('🪩','linear-gradient(135deg,var(--sky),var(--lime))','Freshers Week','', 'YOLO: Freshers Special','Cardiff SU',True,'Wed 30 Sep · 9pm','Y Plas','420','I\'m going','2026-09-30','var(--sky)', freshers=True,
@@ -576,26 +724,16 @@ def soc_card(emoji, bg, name, members, desc, slug):
 def build_societies():
     cards = [
         soc_card('🎬','linear-gradient(135deg,var(--lime),var(--sky))','Film Society','1,240','Weekly screenings, cult classics and trips to the cinema. All welcome.','film'),
-        soc_card('🥾','linear-gradient(135deg,var(--coral),var(--amber))','Hiking & Mountaineering','860','Weekend adventures across the Brecon Beacons and beyond. Kit provided.','hiking'),
-        soc_card('💼','linear-gradient(135deg,var(--sky),var(--lime))','Entrepreneurs Society','1,510','Talks, pitch nights and startup socials. Build something at uni.','entrepreneurs'),
-        soc_card('🎭','linear-gradient(135deg,var(--amber),var(--coral))','Drama Society','740','Termly productions, workshops and open auditions. No experience needed.','drama'),
-        soc_card('⚽','linear-gradient(135deg,var(--lime),var(--coral))','Football Club','2,100','Teams for every level plus casual kickabouts. Give it a go.','football'),
-        soc_card('🌍','linear-gradient(135deg,var(--sky),var(--amber))','International Students','1,880','Socials, trips and a friendly community away from home.','international'),
         soc_card('🏐','linear-gradient(135deg,var(--sky),var(--lime))','Netball Club','980','BUCS netball across every level, from social to competitive.','netball'),
         soc_card('🎸','linear-gradient(135deg,var(--coral),var(--sky))','Music Society','690','Open mic nights, jam sessions and a termly showcase gig.','music'),
-        soc_card('🎙️','linear-gradient(135deg,var(--amber),var(--sky))','Debate Society','410','Weekly debates, national competitions and public speaking practice.','debate'),
-        soc_card('🎗️','linear-gradient(135deg,var(--lime),var(--amber))','RAG Society','560','Fundraising challenges and charity events all year round.','rag'),
         soc_card('📷','linear-gradient(135deg,var(--sky),var(--coral))','Photography Society','730','Shoots around Cardiff, darkroom access and a termly exhibition.','photography'),
-        soc_card('🏳️‍🌈','linear-gradient(135deg,var(--coral),var(--lime))','Pride Society','890','A safe, social space for LGBTQ+ students and allies.','pride'),
     ]
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Find your people</div>'
             '<h1>Societies</h1>'
-            '<div class="sub">300+ Cardiff societies, all in one place. Join in a tap here, or head to the Students\' Union — the official place to join — for membership and the Guild of Societies. Hit "Join" and once the committee accepts you, you\'re into the society\'s own space — chat, events, timetable and kit.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Sport</div>'
-            '<div class="chip">Arts</div><div class="chip">Academic</div><div class="chip">Culture</div>'
-            '<div class="chip">Volunteering</div><div class="chip">Social</div></div>'
-            '<div class="grid g3">%s</div></div>' % ''.join(cards))
+            '<div class="sub">These four have their own full space on Uni-Verse — chat, events, timetable and kit. Every other real Cardiff SU society and Athletic Union sports club is browsable and joinable further down. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
+            '<div class="grid g3">%s</div>'
+            '%s</div>' % (''.join(cards), build_soc_directory()))
     return page('Societies', 'societies', body)
 
 # ---------------- society detail page (chat, events, timetable, kit) ----------------
@@ -661,91 +799,6 @@ SOCIETY_PAGES = {
          tt_row('MONTHLY', 'Committee open meeting', 'First Sunday · Common Room, SU')],
         'Film Society hoodie & tote'),
 
-    'society-hiking.html': build_society_page(
-        'hiking', 'Hiking & Mountaineering', '🥾', 'linear-gradient(135deg,var(--coral),var(--amber))', '860',
-        'Weekend adventures across the Brecon Beacons and beyond.',
-        [society_chat_msg('RH', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Rhys',
-                           "Weather looks decent for Sunday's Brecon walk ⛰️", '3h ago'),
-         society_chat_msg('BC', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Beca',
-                           'Kit check — anyone need to borrow boots?', '1h ago'),
-         society_chat_msg('OW', 'linear-gradient(135deg,var(--amber),var(--lime))', 'Owen',
-                           'Car share sign-up sheet is in the group doc, fill it in pls', '20m ago')],
-        [society_event_row('10', 'Oct', 'Weekend Hike: Brecon Beacons', 'Sat · 8:00am meet · SU forecourt', 'var(--lime)',
-                            '2026-10-10', '8:00am', 'SU forecourt'),
-         society_event_row('11', 'Oct', 'Give It A Go: Bouldering', 'Sun · 2:00pm · Boulders CDF', 'var(--sky)',
-                            '2026-10-11', '2:00pm', 'Boulders CDF')],
-        [tt_row('WEEKLY', 'Kit & trip planning', 'Tuesdays · 6:00pm · Committee Room'),
-         tt_row('FORTNIGHTLY', 'Day hike (location varies)', 'Sundays · meet SU forecourt')],
-        'Hiking & Mountaineering fleece & buff'),
-
-    'society-entrepreneurs.html': build_society_page(
-        'entrepreneurs', 'Entrepreneurs Society', '💼', 'linear-gradient(135deg,var(--sky),var(--lime))', '1,510',
-        'Talks, pitch nights and startup socials.',
-        [society_chat_msg('PR', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Priya',
-                           'Pitch night applications close Friday, get yours in!', '4h ago'),
-         society_chat_msg('CJ', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Callum',
-                           'Guest speaker from a Cardiff startup this week, should be good', '2h ago'),
-         society_chat_msg('NW', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Nia',
-                           'Anyone want to team up for the case study competition?', '45m ago')],
-        [society_event_row('08', 'Oct', 'CV Clinic + Networking', 'Wed · 5:30pm · sbarc | spark', 'var(--amber)',
-                            '2026-10-08', '5:30pm', 'sbarc | spark'),
-         society_event_row('23', 'Oct', 'Pitch Night: Term 1 Final', 'Thu · 6:30pm · sbarc | spark', 'var(--sky)',
-                            '2026-10-23', '6:30pm', 'sbarc | spark')],
-        [tt_row('WEEKLY', 'Speaker series', 'Wednesdays · 6:00pm · sbarc | spark'),
-         tt_row('MONTHLY', 'Pitch practice', 'Last Friday · Business School')],
-        'Entrepreneurs Society hoodie'),
-
-    'society-drama.html': build_society_page(
-        'drama', 'Drama Society', '🎭', 'linear-gradient(135deg,var(--amber),var(--coral))', '740',
-        'Termly productions, workshops and open auditions.',
-        [society_chat_msg('FR', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Freya',
-                           'Audition sign-ups open now for the winter show!', '5h ago'),
-         society_chat_msg('JB', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Josh',
-                           'Rehearsal moved to Studio 2 tonight, same time', '2h ago'),
-         society_chat_msg('AK', 'linear-gradient(135deg,var(--amber),var(--lime))', 'Amelia',
-                           'Does anyone have a spare script copy going?', '18m ago')],
-        [society_event_row('06', 'Oct', 'Open Auditions: Winter Production', 'Mon · 6:00pm · Bute Studio 2', 'var(--coral)',
-                            '2026-10-06', '6:00pm', 'Bute Studio 2'),
-         society_event_row('15', 'Oct', 'Improv Workshop', 'Wed · 7:00pm · Bute Studio 1', 'var(--amber)',
-                            '2026-10-15', '7:00pm', 'Bute Studio 1')],
-        [tt_row('WEEKLY', 'Rehearsals', 'Mondays · 6:00pm · Bute Building, Studio 2'),
-         tt_row('WEEKLY', 'Improv & games night', 'Wednesdays · 7:00pm · Studio 1')],
-        'Drama Society tee'),
-
-    'society-football.html': build_society_page(
-        'football', 'Football Club', '⚽', 'linear-gradient(135deg,var(--lime),var(--coral))', '2,100',
-        'Teams for every level plus casual kickabouts.',
-        [society_chat_msg('LM', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Liam',
-                           "Match report from Saturday's win up on the group now 🔥", '6h ago'),
-         society_chat_msg('FF', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Ffion',
-                           'Training moved indoors this week — sports hall', '3h ago'),
-         society_chat_msg('CH', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Charlie',
-                           "Who's in for Wednesday's fixture?", '40m ago')],
-        [society_event_row('07', 'Oct', 'BUCS Football: Cardiff vs Bristol', 'Wed · 2:00pm · Sports Fields, Llanrumney', 'var(--lime)',
-                            '2026-10-07', '2:00pm', 'Sports Fields, Llanrumney'),
-         society_event_row('11', 'Oct', 'Casual Kickabout', 'Sun · 3:00pm · Talybont Playing Fields', 'var(--sky)',
-                            '2026-10-11', '3:00pm', 'Talybont Playing Fields')],
-        [tt_row('WEEKLY', 'Training', 'Tuesdays & Thursdays · 7:00pm · Sports Fields, Llanrumney'),
-         tt_row('WEEKLY', 'Matchday (BUCS)', 'Saturdays · venue varies')],
-        'Football Club home & away kit'),
-
-    'society-international.html': build_society_page(
-        'international', 'International Students', '🌍', 'linear-gradient(135deg,var(--sky),var(--amber))', '1,880',
-        'Socials, trips and a friendly community away from home.',
-        [society_chat_msg('YK', 'linear-gradient(135deg,var(--coral),var(--lime))', 'Yuki',
-                           'Potluck dinner this Friday, bring a dish from home!', '4h ago'),
-         society_chat_msg('MR', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Marco',
-                           'Anyone going on the Bath day trip next month?', '1h ago'),
-         society_chat_msg('LY', 'linear-gradient(135deg,var(--amber),var(--sky))', 'Layla',
-                           'Coffee morning tomorrow 10am, all welcome ☕', '25m ago')],
-        [society_event_row('10', 'Oct', 'Welcome Potluck Dinner', 'Fri · 6:00pm · Y Plas', 'var(--coral)',
-                            '2026-10-10', '6:00pm', 'Y Plas'),
-         society_event_row('18', 'Oct', 'Day Trip: Bath', 'Sat · 9:00am meet · SU forecourt', 'var(--sky)',
-                            '2026-10-18', '9:00am', 'SU forecourt')],
-        [tt_row('WEEKLY', 'Coffee morning', 'Wednesdays · 10:00am · SU Café'),
-         tt_row('MONTHLY', 'Potluck social', 'First Friday · Y Plas')],
-        'International Students Society scarf'),
-
     'society-netball.html': build_society_page(
         'netball', 'Netball Club', '🏐', 'linear-gradient(135deg,var(--sky),var(--lime))', '980',
         'BUCS netball across every level, from social to competitive.',
@@ -780,40 +833,6 @@ SOCIETY_PAGES = {
          tt_row('TERMLY', 'Showcase gig', 'Last Friday of term · Y Plas')],
         'Music Society tee & tote'),
 
-    'society-debate.html': build_society_page(
-        'debate', 'Debate Society', '🎙️', 'linear-gradient(135deg,var(--amber),var(--sky))', '410',
-        'Weekly debates, national competitions and public speaking practice.',
-        [society_chat_msg('ZR', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Zara',
-                           "This week's motion: 'This House Would Abolish Exams' 👀", '4h ago'),
-         society_chat_msg('BN', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Ben',
-                           'Novice training session was great, thanks for running it', '2h ago'),
-         society_chat_msg('IR', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Iris',
-                           'Signed us up for the Cardiff Open, who\'s in?', '15m ago')],
-        [society_event_row('06', 'Oct', 'Weekly Debate Night', 'Tue · 7:00pm · Committee Room, SU', 'var(--amber)',
-                            '2026-10-06', '7:00pm', 'Committee Room, SU'),
-         society_event_row('20', 'Oct', 'Novice Training Workshop', 'Tue · 6:00pm · Committee Room, SU', 'var(--sky)',
-                            '2026-10-20', '6:00pm', 'Committee Room, SU')],
-        [tt_row('WEEKLY', 'Debate night', 'Tuesdays · 7:00pm · Committee Room, SU'),
-         tt_row('MONTHLY', 'Novice training', 'First Tuesday · Committee Room, SU')],
-        'Debate Society pin & tote'),
-
-    'society-rag.html': build_society_page(
-        'rag', 'RAG Society', '🎗️', 'linear-gradient(135deg,var(--lime),var(--amber))', '560',
-        'Fundraising challenges and charity events all year round.',
-        [society_chat_msg('HL', 'linear-gradient(135deg,var(--coral),var(--lime))', 'Holly',
-                           'Skydive sign-ups close Friday — last few spots!', '3h ago'),
-         society_chat_msg('FN', 'linear-gradient(135deg,var(--amber),var(--sky))', 'Fin',
-                           'Bake sale raised £340 today, amazing work everyone 🎉', '1h ago'),
-         society_chat_msg('ZO', 'linear-gradient(135deg,var(--sky),var(--coral))', 'Zoe',
-                           'Can someone cover the collection bucket Saturday morning?', '25m ago')],
-        [society_event_row('14', 'Oct', 'Charity Bake Sale', 'Wed · 11:00am · SU Concourse', 'var(--lime)',
-                            '2026-10-14', '11:00am', 'SU Concourse'),
-         society_event_row('24', 'Oct', 'RAG Skydive Challenge', 'Sat · 9:00am · Airfield, Swansea', 'var(--amber)',
-                            '2026-10-24', '9:00am', 'Airfield, Swansea')],
-        [tt_row('WEEKLY', 'Committee meeting', 'Thursdays · 6:00pm · Committee Room, SU'),
-         tt_row('MONTHLY', 'Big fundraiser', 'Last Saturday · venue varies')],
-        'RAG Society charity tee'),
-
     'society-photography.html': build_society_page(
         'photography', 'Photography Society', '📷', 'linear-gradient(135deg,var(--sky),var(--coral))', '730',
         'Shoots around Cardiff, darkroom access and a termly exhibition.',
@@ -830,23 +849,6 @@ SOCIETY_PAGES = {
         [tt_row('WEEKLY', 'Darkroom access', 'Tuesdays · Bute Building'),
          tt_row('MONTHLY', 'Society shoot', 'First Friday · location varies')],
         'Photography Society tote & lens cloth'),
-
-    'society-pride.html': build_society_page(
-        'pride', 'Pride Society', '🏳️‍🌈', 'linear-gradient(135deg,var(--coral),var(--lime))', '890',
-        'A safe, social space for LGBTQ+ students and allies.',
-        [society_chat_msg('RO', 'linear-gradient(135deg,var(--coral),var(--amber))', 'Robin',
-                           'Coffee & chat this week is at the usual spot, 2pm', '3h ago'),
-         society_chat_msg('SA', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Sasha',
-                           'Pride Ball tickets go on sale Monday, mark your calendars!', '1h ago'),
-         society_chat_msg('JM', 'linear-gradient(135deg,var(--lime),var(--coral))', 'Jamie',
-                           'New badges just arrived, come grab one at the social', '15m ago')],
-        [society_event_row('14', 'Oct', 'Coffee & Chat', 'Wed · 2:00pm · SU Café', 'var(--coral)',
-                            '2026-10-14', '2:00pm', 'SU Café'),
-         society_event_row('21', 'Nov', 'Pride Ball', 'Fri · 7:00pm · Great Hall', 'var(--lime)',
-                            '2026-11-21', '7:00pm', 'Great Hall')],
-        [tt_row('WEEKLY', 'Coffee & chat', 'Wednesdays · 2:00pm · SU Café'),
-         tt_row('MONTHLY', 'Social night', 'Third Friday · Y Plas')],
-        'Pride Society badge & flag'),
 }
 
 # ================= PAGE: FLATMATES =================
@@ -1196,7 +1198,8 @@ def build_profile():
             '<div class="page-head" style="display:flex;align-items:center;gap:16px">'
             '<div class="rail-avatar" style="width:64px;height:64px;font-size:1.4rem;border-radius:18px">FW</div>'
             '<div><h1 style="margin-bottom:4px">Findlay Wyatt</h1>'
-            '<div class="sub">1st year · Computer Science · Cardiff University</div></div></div>'
+            '<div class="sub">1st year · Computer Science · Cardiff University</div></div>'
+            '<button class="pill" id="logoutBtn" type="button" style="margin-left:auto">Log out</button></div>'
             + stat_strip +
             '<div class="widget"><div class="widget-head"><h3>Your uni journey</h3>'
             '<span class="mono-eyebrow">3 of 6 done</span></div>'
