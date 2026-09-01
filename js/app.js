@@ -262,23 +262,45 @@
     }
 
     // ---- filter chips ----
-    // Mostly decorative (visual toggle only). The one exception: a "Freshers Week"
-    // chip actually filters its grid down to freshers-tagged cards, when present.
-    // Grid is found via an explicit data-filter-grid id when set (robust), falling
-    // back to "whatever follows the chips" for the purely-decorative rows elsewhere.
+    // Every chip group actually filters its grid now, not just the Freshers Week one.
+    // A chip declares what it's testing for via its own data attribute, checked against the
+    // matching data attribute on each card:
+    //   .freshers-chip          -> card has [data-freshers]
+    //   data-free="1"           -> card has [data-free] (no paid ticket link)
+    //   data-venue="Home/Away"  -> card's data-venue matches exactly
+    //   data-maxprice="450"     -> card's data-price (a number) is under that
+    //   data-cat="X"            -> card's data-cat (space-separated — a card can carry more
+    //                              than one, e.g. an event that's both "Social" and "Societies")
+    //                              contains that value
+    //   none of the above       -> "All" — matches everything
+    // Grid is found via an explicit data-filter-grid id when set (robust), falling back to
+    // "whatever follows the chips" otherwise. The map page (venueGrid) and the full society
+    // directory (socDirGrid) have their own dedicated, more involved filter logic elsewhere
+    // (combined with the map's markers / the directory's search box), so they're skipped here.
+    function chipMatchesCard(chip, card) {
+      if (chip.classList.contains('freshers-chip')) return card.hasAttribute('data-freshers');
+      if (chip.dataset.free) return card.hasAttribute('data-free');
+      if (chip.dataset.venue) return card.dataset.venue === chip.dataset.venue;
+      if (chip.dataset.maxprice) {
+        if (card.dataset.price === undefined) return false;
+        return parseInt(card.dataset.price, 10) < parseInt(chip.dataset.maxprice, 10);
+      }
+      if (chip.dataset.cat) {
+        var tokens = (card.dataset.cat || '').split(' ');
+        return tokens.indexOf(chip.dataset.cat) !== -1;
+      }
+      return true;
+    }
     document.querySelectorAll('.chips').forEach(function (group) {
+      if (group.classList.contains('soc-dir-chips') || group.id === 'mapChips') return;
       var grid = group.dataset.filterGrid ? document.getElementById(group.dataset.filterGrid) : group.nextElementSibling;
-      var hasFreshersCards = grid && grid.querySelector && grid.querySelector('[data-freshers]');
+      if (!grid) return;
+      var cards = Array.from(grid.querySelectorAll('.card, .post'));
       group.querySelectorAll('.chip').forEach(function (c) {
         c.addEventListener('click', function () {
           group.querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); });
           c.classList.add('on');
-          if (hasFreshersCards) {
-            var wantFreshers = c.classList.contains('freshers-chip');
-            grid.querySelectorAll('.card').forEach(function (card) {
-              card.hidden = wantFreshers && !card.hasAttribute('data-freshers');
-            });
-          }
+          cards.forEach(function (card) { card.hidden = !chipMatchesCard(c, card); });
         });
       });
     });
@@ -445,9 +467,54 @@
           b.textContent = 'Joined ✓';
           setSocietyJoined(slug);
           if (viewLink) viewLink.hidden = false;
+          renderYourSocieties();
         }, 1400);
       });
     });
+
+    // ---- "Your Societies" widget (societies.html) — every joined society, resolved against ----
+    // the sitewide search index so both the featured 4 and the real 265-entry directory work.
+    function renderYourSocieties() {
+      var list = document.getElementById('yourSocList');
+      if (!list) return;
+      var joined = [];
+      try {
+        joined = Object.keys(window.localStorage)
+          .filter(function (k) { return k.indexOf('uv-joined-') === 0; })
+          .map(function (k) {
+            var slug = k.replace('uv-joined-', '');
+            var ts = parseInt(window.localStorage.getItem(k), 10);
+            var match = (window.UV_SEARCH || []).find(function (i) {
+              return i.u === 'society-' + slug + '.html' || i.u === 'societies.html?soc=' + slug;
+            });
+            return match ? { name: match.t, cat: match.c, url: match.u, ts: isNaN(ts) ? 0 : ts } : null;
+          })
+          .filter(Boolean)
+          .sort(function (a, b) { return b.ts - a.ts; });
+      } catch (e) {}
+
+      if (!joined.length) {
+        list.innerHTML = '<div class="your-soc-empty">You haven\'t joined any societies yet — join one on the left and it\'ll show up here.</div>';
+        return;
+      }
+      var shown = joined.slice(0, 8);
+      list.innerHTML = shown.map(function (s) {
+        return '<a class="soc-row" href="' + s.url + '">'
+          + '<div class="soc-row-ava" style="background:var(--lime)">' + initialsOf(s.name) + '</div>'
+          + '<div class="soc-row-body"><div class="soc-row-name">' + s.name + '</div>'
+          + '<div class="soc-row-cat">' + s.cat + '</div></div></a>';
+      }).join('');
+      if (joined.length > shown.length) {
+        list.innerHTML += '<div class="your-soc-more">+' + (joined.length - shown.length) + ' more</div>';
+      }
+    }
+    function initialsOf(name) {
+      var words = name.match(/[A-Za-z0-9]+/g) || [];
+      if (!words.length) return '?';
+      if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    renderYourSocieties();
 
     // ---- full society directory: search + category filter, combined (societies.html) ----
     var socDirGrid = document.getElementById('socDirGrid');
@@ -673,22 +740,24 @@
           });
         }
 
-        venues.push({ card: card, marker: marker, lat: lat, lng: lng, search: card.dataset.search || '' });
+        venues.push({ card: card, marker: marker, lat: lat, lng: lng, search: card.dataset.search || '', cat: card.dataset.cat || '' });
       });
 
-      // ---- search: filters cards + pins together, zooms the map to the matches ----
+      // ---- search + category chips: filter cards & pins together, zoom the map to the matches ----
       var searchInput = document.getElementById('venueSearch');
       var clearBtn = document.getElementById('venueSearchClear');
       var matchCount = document.getElementById('venueMatchCount');
       var emptyState = document.getElementById('venueEmpty');
       var emptyQuery = document.getElementById('venueEmptyQuery');
+      var mapChips = document.querySelectorAll('#mapChips .chip');
+      var activeCat = '';
 
       function runSearch() {
         var q = (searchInput.value || '').trim().toLowerCase();
         if (clearBtn) clearBtn.classList.toggle('show', q.length > 0);
         var visible = [];
         venues.forEach(function (v) {
-          var match = !q || v.search.indexOf(q) !== -1;
+          var match = (!q || v.search.indexOf(q) !== -1) && (!activeCat || v.cat === activeCat);
           v.card.hidden = !match;
           if (match) {
             if (!venueMap.hasLayer(v.marker)) v.marker.addTo(venueMap);
@@ -716,6 +785,14 @@
           });
         }
       }
+      mapChips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          mapChips.forEach(function (x) { x.classList.remove('on'); });
+          chip.classList.add('on');
+          activeCat = chip.dataset.cat || '';
+          runSearch();
+        });
+      });
     }
 
     // ---- profile stat strip: numbers respond to real joins/RSVPs, on top of the starting baseline ----

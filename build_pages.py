@@ -39,7 +39,7 @@ ICONS = {
     'map': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M1 6l7-3 8 3 7-3v15l-7 3-8-3-7 3V6z"/><path stroke-linecap="round" d="M8 3v15M16 6v15"/></svg>',
     'close': '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>',
     'bucs': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"/><path stroke-linecap="round" d="M7 5H4a1 1 0 00-1 1v1a4 4 0 004 4M17 5h3a1 1 0 011 1v1a4 4 0 01-4 4"/></svg>',
-    'flatmates': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.8 12.2L21 2M21 2v5M21 2h-5M16.5 6.5L19 9"/></svg>',
+    'flatmates': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 11l9-8 9 8"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 10v9a2 2 0 002 2h10a2 2 0 002-2v-9"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 21v-6h6v6"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 6.5V4h3v4.5"/></svg>',
     'plus': '<svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>',
     'shield': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>',
     'phone': '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.1-8.7A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.7a2 2 0 01-.4 2.1L8 9.9a16 16 0 006 6l1.4-1.4a2 2 0 012.1-.4c.9.3 1.8.5 2.7.6a2 2 0 011.8 2.2z"/></svg>',
@@ -165,6 +165,28 @@ SU_SOCIETIES_URL = 'https://www.cardiffstudents.com/activities/societies/'
 # here since they're already those featured cards under a matching real name, so they're not duplicated.
 # 'Society Executive Committee' is left out too — it's the SU's own governance body, not a society to join.
 REAL_SOCIETIES = [
+    # Sports clubs, from the Athletic Union's own club list — a separate part of the SU from the
+    # societies below. 'Netball Club' is excluded since it's already the featured card above.
+    ('Sport', [
+        'Aerial Fitness', 'Aikido Club', 'American Football Club', 'Archery Club', 'Athletics Club',
+        'Badminton Club', 'Baseball and Softball Club', 'Boxing Club', 'Cardiff Medicals Rugby',
+        'Cardiff Snakecharmers Cheerleading', 'Cardiff University Barbell Club',
+        'Caving & Canyoning Club', 'Clay Pigeon Shooting Club', 'Cuesports Club', 'Cycling Club',
+        'Dancesport Club', 'Darts Club', 'Dodgeball Club', 'Equestrian Club', 'Fencing Club',
+        'Gaelic Football Club', 'Golf Club', 'Gymnastics Club', 'Hiking Club', 'Ice Hockey Club',
+        'Ice Skating Club', 'Jiu Jitsu Club', 'Karate Club', 'Kayaking Club', 'Kickboxing Club',
+        'Korfball Club', 'Kung Fu Club', 'Lacrosse Club', 'Medics Basketball Club',
+        'Medics Football Club', "Medics Men's Hockey Club", 'Medics Netball Club',
+        'Medics Squash Club', "Medics Women's Hockey Club", "Men's Basketball Club",
+        "Men's Cricket Programme", "Men's Football Club", "Men's Futsal Club", "Men's Hockey Club",
+        "Men's Rugby Club", 'Mixed Martial Arts (MMA)', 'Motorsports Club', 'Mountain Biking Club',
+        'Mountaineering Club', 'Padel Club', 'Polo Club', 'Rifle and Pistol Club', 'Rounders Club',
+        'Rowing Club', 'Rugby League Club', 'Sailing Club', 'Scuba Diving Club', 'Snowsports Club',
+        'Squash Club', 'Surf Sports', 'Swimming & Waterpolo Club', 'Table Tennis Club',
+        'Taekwon-Do Club', 'Tennis Club', 'Touch Rugby Club', 'Trampoline Club', 'Triathlon Club',
+        'Ultimate Frisbee Club', 'Volleyball Club', 'Windsurfing Club', "Women's Basketball Club",
+        "Women's Cricket Club", "Women's Football Club", "Women's Hockey Club", "Women's Rugby Club",
+    ]),
     ('Activity & Appreciation', [
         'AI Safety Cardiff University', 'AIESEC', 'Airsoft Society', 'Alternative Music Society',
         'Anime Society', 'Baking Society', 'Book Club', 'Bridge Society',
@@ -235,28 +257,6 @@ REAL_SOCIETIES = [
     ('Student Led Services', ['Stronger Together', 'Student Minds']),
     ('Student Media', ['CUTV', 'Gair Rhydd', 'Quench', 'Xpress Radio']),
     ('Other', ['Housing Action', 'Medics Grad Ball', 'Nightline', 'SHAG', 'Web Design Society']),
-    # Sports clubs, from the Athletic Union's own club list — a separate part of the SU from the
-    # societies above. 'Netball Club' is excluded since it's already the featured card above.
-    ('Sport', [
-        'Aerial Fitness', 'Aikido Club', 'American Football Club', 'Archery Club', 'Athletics Club',
-        'Badminton Club', 'Baseball and Softball Club', 'Boxing Club', 'Cardiff Medicals Rugby',
-        'Cardiff Snakecharmers Cheerleading', 'Cardiff University Barbell Club',
-        'Caving & Canyoning Club', 'Clay Pigeon Shooting Club', 'Cuesports Club', 'Cycling Club',
-        'Dancesport Club', 'Darts Club', 'Dodgeball Club', 'Equestrian Club', 'Fencing Club',
-        'Gaelic Football Club', 'Golf Club', 'Gymnastics Club', 'Hiking Club', 'Ice Hockey Club',
-        'Ice Skating Club', 'Jiu Jitsu Club', 'Karate Club', 'Kayaking Club', 'Kickboxing Club',
-        'Korfball Club', 'Kung Fu Club', 'Lacrosse Club', 'Medics Basketball Club',
-        'Medics Football Club', "Medics Men's Hockey Club", 'Medics Netball Club',
-        'Medics Squash Club', "Medics Women's Hockey Club", "Men's Basketball Club",
-        "Men's Cricket Programme", "Men's Football Club", "Men's Futsal Club", "Men's Hockey Club",
-        "Men's Rugby Club", 'Mixed Martial Arts (MMA)', 'Motorsports Club', 'Mountain Biking Club',
-        'Mountaineering Club', 'Padel Club', 'Polo Club', 'Rifle and Pistol Club', 'Rounders Club',
-        'Rowing Club', 'Rugby League Club', 'Sailing Club', 'Scuba Diving Club', 'Snowsports Club',
-        'Squash Club', 'Surf Sports', 'Swimming & Waterpolo Club', 'Table Tennis Club',
-        'Taekwon-Do Club', 'Tennis Club', 'Touch Rugby Club', 'Trampoline Club', 'Triathlon Club',
-        'Ultimate Frisbee Club', 'Volleyball Club', 'Windsurfing Club', "Women's Basketball Club",
-        "Women's Cricket Club", "Women's Football Club", "Women's Hockey Club", "Women's Rugby Club",
-    ]),
 ]
 
 def _slugify(name):
@@ -442,7 +442,7 @@ def sidebar_socs():
 
 # ---------------- POST cards for feed ----------------
 def post_social():
-    return ('<article class="post"><span class="accent-edge" style="background:var(--coral)"></span>'
+    return ('<article class="post" data-cat="Social Societies"><span class="accent-edge" style="background:var(--coral)"></span>'
             '<div class="post-top"><div class="post-ava" style="background:linear-gradient(135deg,var(--coral),var(--amber))">CS</div>'
             '<div class="post-meta"><div class="org">Cardiff Computer Science Society%s</div>'
             '<div class="time">Posted 2h ago · reposted from @cardiffcompsci</div></div>'
@@ -462,7 +462,7 @@ def post_social():
             % (VERIFY, ICONS['cal'], ICONS['pin'], ICONS['people']))
 
 def post_deal():
-    return ('<article class="post deal"><span class="accent-edge" style="background:var(--lime)"></span>'
+    return ('<article class="post deal" data-cat="Discounts Affiliates"><span class="accent-edge" style="background:var(--lime)"></span>'
             '<div class="deal-badge">-25%</div>'
             '<div class="post-top"><div class="post-ava" style="background:var(--lime)">☕</div>'
             '<div class="post-meta"><div class="org">Brewhouse Coffee · Cathays</div>'
@@ -474,7 +474,7 @@ def post_deal():
             '<button class="pill primary">Get code</button></div></div></article>')
 
 def post_job():
-    return ('<article class="post"><span class="accent-edge" style="background:var(--sky)"></span>'
+    return ('<article class="post" data-cat="Professional Affiliates"><span class="accent-edge" style="background:var(--sky)"></span>'
             '<div class="post-top"><div class="post-ava" style="background:linear-gradient(135deg,var(--sky),var(--lime))">CC</div>'
             '<div class="post-meta"><div class="org">Cardiff University Careers%s</div>'
             '<div class="time">Posted today · links out to the employer</div></div>'
@@ -492,7 +492,7 @@ def post_job():
             % (VERIFY, ICONS['money'], ICONS['pin'], ICONS['clock'], ICONS['ext']))
 
 def post_workshop():
-    return ('<article class="post"><span class="accent-edge" style="background:var(--amber)"></span>'
+    return ('<article class="post" data-cat="Professional Societies"><span class="accent-edge" style="background:var(--amber)"></span>'
             '<div class="post-top"><div class="post-ava" style="background:linear-gradient(135deg,var(--amber),var(--coral))">EW</div>'
             '<div class="post-meta"><div class="org">Enactus Cardiff%s</div>'
             '<div class="time">Posted yesterday</div></div>'
@@ -515,13 +515,13 @@ def build_feed():
     body = ('<div class="content two-col"><div class="feed-col">'
             '<div class="greeting"><div class="hi display">Alright, Findlay <span class="wave">👋</span></div>'
             '<div class="sub">3 events near you this week · 2 new opportunities in your field · Freshers\' Fair is live</div></div>'
-            '<div class="chips"><div class="chip on">Everything</div>'
-            '<div class="chip"><span class="cd" style="background:var(--coral)"></span>Social</div>'
-            '<div class="chip"><span class="cd" style="background:var(--sky)"></span>Professional</div>'
-            '<div class="chip"><span class="cd" style="background:var(--lime)"></span>Discounts</div>'
-            '<div class="chip"><span class="cd" style="background:var(--amber)"></span>Societies</div>'
-            '<div class="chip">Affiliates</div></div>'
-            '<div class="feed">%s%s%s%s</div></div>'
+            '<div class="chips" data-filter-grid="feedGrid"><div class="chip on">Everything</div>'
+            '<div class="chip" data-cat="Social"><span class="cd" style="background:var(--coral)"></span>Social</div>'
+            '<div class="chip" data-cat="Professional"><span class="cd" style="background:var(--sky)"></span>Professional</div>'
+            '<div class="chip" data-cat="Discounts"><span class="cd" style="background:var(--lime)"></span>Discounts</div>'
+            '<div class="chip" data-cat="Societies"><span class="cd" style="background:var(--amber)"></span>Societies</div>'
+            '<div class="chip" data-cat="Affiliates">Affiliates</div></div>'
+            '<div class="feed" id="feedGrid">%s%s%s%s</div></div>'
             '<aside class="side-col">%s%s%s%s</aside></div>'
             % (post_social(), post_deal(), post_job(), post_workshop(),
                sidebar_ai(), sidebar_journey(), sidebar_week(), sidebar_socs()))
@@ -529,14 +529,24 @@ def build_feed():
 
 # ================= PAGE: EVENTS =================
 def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going, cta, iso_date, color,
-                ticket_url='', ticket_label='', freshers=False, page_url='events.html'):
+                ticket_url='', ticket_label='', freshers=False, page_url='events.html', venue='', extra_cat=''):
     v = VERIFY if verified else ''
     cal_time = date.split(' · ')[-1]
     ticket_html = ''
     if ticket_url:
         ticket_html = ('<a class="ticket-link" href="%s" target="_blank" rel="noopener">%s %s</a>'
                         % (ticket_url, ticket_label, ICONS['ext']))
-    freshers_attr = ' data-freshers="1"' if freshers else ''
+    # extra data attributes that make the page's filter chips actually filter, on top of the
+    # visible chip-cat badge: real category (can carry more than one, space-separated), whether
+    # it's free to attend (inferred from having no paid ticket link), which "side" for BUCS fixtures.
+    cat_value = (cat + (' ' + extra_cat if extra_cat else '')).strip()
+    extra_attrs = ' data-cat="%s" data-date="%s"' % (cat_value, iso_date)
+    if freshers:
+        extra_attrs += ' data-freshers="1"'
+    if not ticket_url:
+        extra_attrs += ' data-free="1"'
+    if venue:
+        extra_attrs += ' data-venue="%s"' % venue
     save_id = 'event:' + title
     return ('<div class="card"%s><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
@@ -549,7 +559,7 @@ def event_card(emoji, bg, cat, catcol, title, org, verified, date, place, going,
             '<div class="card-foot"><span class="stat">%s going</span>'
             '<button class="pill primary" data-rsvp="Going ✓" data-cal-title="%s" data-cal-date="%s" '
             'data-cal-time="%s" data-cal-place="%s" data-cal-color="%s">%s</button></div></div></div>'
-            % (freshers_attr, bg, cat, save_id, title, cat, page_url, date + ' · ' + place, color, ICONS['heart'],
+            % (extra_attrs, bg, cat, save_id, title, cat, page_url, date + ' · ' + place, color, ICONS['heart'],
                emoji, title, org, v, ICONS['cal'], date, ICONS['pin'], place,
                ticket_html, going, title, iso_date, cal_time, place, color, cta))
 
@@ -566,7 +576,7 @@ def build_events():
     cards = [
         event_card('🎮','linear-gradient(135deg,var(--coral),var(--amber))','Social','', 'Games Night + Pizza','Computer Science Society',True,'Thu 2 Oct · 7pm','SU, Y Plas','84','I\'m going','2026-10-02','var(--coral)'),
         event_card('🎤','linear-gradient(135deg,var(--sky),var(--lime))','Social','', 'Open Mic Night','Music Society',True,'Fri 3 Oct · 8pm','The Taf','56','I\'m going','2026-10-03','var(--coral)'),
-        event_card('💼','linear-gradient(135deg,var(--amber),var(--coral))','Workshop','', 'CV Clinic + Networking','Enactus Cardiff',True,'Wed 8 Oct · 5:30pm','sbarc | spark','40','Reserve','2026-10-08','var(--amber)'),
+        event_card('💼','linear-gradient(135deg,var(--amber),var(--coral))','Workshop','', 'CV Clinic + Networking','Enactus Cardiff',True,'Wed 8 Oct · 5:30pm','sbarc | spark','40','Reserve','2026-10-08','var(--amber)', extra_cat='Professional'),
         event_card('🧗','linear-gradient(135deg,var(--lime),var(--sky))','Sport','', 'Give It A Go: Bouldering','Mountaineering Club',True,'Sat 11 Oct · 2pm','Boulders CDF','22','I\'m going','2026-10-11','var(--lime)'),
         event_card('🎬','linear-gradient(135deg,var(--coral),var(--sky))','Social','', 'Film Night: Cult Classics','Film Society',True,'Sun 12 Oct · 6pm','SU Cinema','70','I\'m going','2026-10-12','var(--coral)'),
         event_card('🌍','linear-gradient(135deg,var(--sky),var(--amber))','Talk','', 'Careers in Sustainability','Careers Service',True,'Tue 14 Oct · 1pm','Glamorgan Building','35','Reserve','2026-10-14','var(--sky)'),
@@ -578,9 +588,11 @@ def build_events():
             'Filter by what you\'re into — all hosted by verified organisations.</div></div>'
             '<div class="chips" data-filter-grid="eventsGrid"><div class="chip on">All</div>'
             '<div class="chip freshers-chip">🎉 Freshers Week</div>'
-            '<div class="chip">Social</div>'
-            '<div class="chip">Professional</div><div class="chip">Sport</div><div class="chip">Talks</div>'
-            '<div class="chip">This week</div><div class="chip">Free</div></div>'
+            '<div class="chip" data-cat="Social">Social</div>'
+            '<div class="chip" data-cat="Professional">Professional</div>'
+            '<div class="chip" data-cat="Sport">Sport</div>'
+            '<div class="chip" data-cat="Talk">Talks</div>'
+            '<div class="chip" data-free="1">Free</div></div>'
             '<div class="grid g3" id="eventsGrid">%s</div></div>' % ''.join(freshers_cards + cards))
     return page('Events', 'events', body)
 
@@ -592,32 +604,33 @@ def build_bucs():
                     'Cardiff vs Hartpury', 'Round 1 · Home · BUCS Super Rugby', True,
                     'Wed 23 Sep · 2pm', 'Cardiff University Sports Fields, Llanrumney', '54', 'I\'m going',
                     '2026-09-23', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html', venue='Home'),
         event_card('🏉', 'linear-gradient(135deg,var(--sky),var(--lime))', 'Rugby', '',
                     'Durham vs Cardiff', 'Round 2 · Away · BUCS Super Rugby', True,
                     'Wed 30 Sep · 2pm', 'Durham', '11', 'I\'m going',
                     '2026-09-30', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html', venue='Away'),
         event_card('🏆', 'linear-gradient(135deg,var(--amber),var(--coral))', 'Derby', '',
                     'Cardiff vs Cardiff Met', 'Round 3 · Home · The Cardiff Clash', True,
                     'Wed 7 Oct · 7:30pm', 'Cardiff Arms Park', '340', 'I\'m going',
                     '2026-10-07', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'The Cardiff Clash — get tickets', page_url='bucs.html'),
+                    'https://www.bucs.org.uk/tickets.html', 'The Cardiff Clash — get tickets', page_url='bucs.html',
+                    venue='Home', extra_cat='Rugby'),
         event_card('🏉', 'linear-gradient(135deg,var(--lime),var(--sky))', 'Rugby', '',
                     'Brunel vs Cardiff', 'Round 4 · Away · BUCS Super Rugby', True,
                     'Wed 14 Oct · 2pm', 'Brunel', '9', 'I\'m going',
                     '2026-10-14', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html', venue='Away'),
         event_card('🏉', 'linear-gradient(135deg,var(--coral),var(--sky))', 'Rugby', '',
                     'Cardiff vs Nottingham', 'Round 5 · Home · BUCS Super Rugby', True,
                     'Wed 28 Oct · 2pm', 'Cardiff University Sports Fields, Llanrumney', '61', 'I\'m going',
                     '2026-10-28', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html', venue='Home'),
         event_card('🏉', 'linear-gradient(135deg,var(--sky),var(--amber))', 'Rugby', '',
                     'Exeter vs Cardiff', 'Round 6 · Away · BUCS Super Rugby', True,
                     'Wed 4 Nov · 2pm', 'Exeter', '14', 'I\'m going',
                     '2026-11-04', 'var(--coral)',
-                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html'),
+                    'https://www.bucs.org.uk/tickets.html', 'BUCS tickets', page_url='bucs.html', venue='Away'),
     ]
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Cardiff University sport</div>'
@@ -627,8 +640,10 @@ def build_bucs():
             'Men\'s BUCS Super Rugby; see the '
             '<a href="https://www.cardiffstudents.com/activities/au/bucs-fixtures/" target="_blank" rel="noopener" '
             'style="color:var(--lime);font-weight:700">Athletic Union\'s full fixture list ↗</a> for all 34 sports clubs.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Home</div>'
-            '<div class="chip">Away</div><div class="chip">Rugby</div></div>'
+            '<div class="chips"><div class="chip on">All</div>'
+            '<div class="chip" data-venue="Home">Home</div>'
+            '<div class="chip" data-venue="Away">Away</div>'
+            '<div class="chip" data-cat="Rugby">Rugby</div></div>'
             '<div class="grid g3">%s</div></div>' % ''.join(fixtures))
     return page('BUCS', 'bucs', body)
 
@@ -637,7 +652,7 @@ def opp_row(logo, bg, role, kind, org, verified, tags, closes):
     v = VERIFY if verified else ''
     tagbits = ''.join('<div class="bit">%s</div>' % t for t in tags)
     save_id = 'opportunity:' + role
-    return ('<article class="post"><span class="accent-edge" style="background:var(--sky)"></span>'
+    return ('<article class="post" data-cat="%s"><span class="accent-edge" style="background:var(--sky)"></span>'
             '<div class="post-top"><div class="post-ava" style="background:%s">%s</div>'
             '<div class="post-meta"><div class="org">%s%s</div>'
             '<div class="time">%s · links out to employer</div></div>'
@@ -649,7 +664,7 @@ def opp_row(logo, bg, role, kind, org, verified, tags, closes):
             '<span>↗ Share</span></div>'
             '<div class="post-actions"><button class="pill">Details</button>'
             '<button class="pill primary">Apply on site %s</button></div></div></article>'
-            % (bg, logo, org, v, closes, kind, role, tagbits, save_id, role, org + ' · ' + closes, ICONS['ext']))
+            % (kind, bg, logo, org, v, closes, kind, role, tagbits, save_id, role, org + ' · ' + closes, ICONS['ext']))
 
 def build_opps():
     rows = [
@@ -666,16 +681,19 @@ def build_opps():
             '<div class="page-head"><div class="ey mono-eyebrow">Don\'t miss out</div>'
             '<h1>Opportunities</h1>'
             '<div class="sub">Internships, placements, grad schemes and part-time work — pulled together from Cardiff Careers and partner employers. Every listing links straight back to the source to apply.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Internships</div>'
-            '<div class="chip">Placements</div><div class="chip">Graduate</div><div class="chip">Part-time</div>'
-            '<div class="chip">Volunteering</div></div>'
+            '<div class="chips"><div class="chip on">All</div>'
+            '<div class="chip" data-cat="Internship">Internships</div>'
+            '<div class="chip" data-cat="Placement">Placements</div>'
+            '<div class="chip" data-cat="Graduate">Graduate</div>'
+            '<div class="chip" data-cat="Part-time">Part-time</div>'
+            '<div class="chip" data-cat="Volunteering">Volunteering</div></div>'
             '<div class="feed">%s</div></div>' % ''.join(rows))
     return page('Opportunities', 'opps', body)
 
 # ================= PAGE: DISCOUNTS =================
 def deal_card(emoji, bg, cat, name, place, desc, pct, cta):
     save_id = 'discount:' + name
-    return ('<div class="card"><div class="card-media" style="background:%s">'
+    return ('<div class="card" data-cat="%s"><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
             '<button class="save-heart" data-save-id="%s" data-save-title="%s" data-save-type="Discount" '
             'data-save-url="discounts.html" data-save-meta="%s" data-save-color="var(--lime)">%s</button>'
@@ -685,7 +703,7 @@ def deal_card(emoji, bg, cat, name, place, desc, pct, cta):
             '<p>%s</p>'
             '<div class="card-foot"><span class="stat">Show your card</span>'
             '<button class="pill primary">%s</button></div></div></div>'
-            % (bg, cat, save_id, name, place + ' · ' + pct, ICONS['heart'], emoji, pct, name, place, desc, cta))
+            % (cat, bg, cat, save_id, name, place + ' · ' + pct, ICONS['heart'], emoji, pct, name, place, desc, cta))
 
 def build_discounts():
     cards = [
@@ -700,9 +718,12 @@ def build_discounts():
             '<div class="page-head"><div class="ey mono-eyebrow">Your card, your savings</div>'
             '<h1>Student discounts</h1>'
             '<div class="sub">Deals from local Cardiff businesses, free with your Uni-Verse account. Show your card in-store or grab a code.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Food &amp; Drink</div>'
-            '<div class="chip">Fitness</div><div class="chip">Grooming</div><div class="chip">Study</div>'
-            '<div class="chip">Nights out</div></div>'
+            '<div class="chips"><div class="chip on">All</div>'
+            '<div class="chip" data-cat="Food &amp; Drink">Food &amp; Drink</div>'
+            '<div class="chip" data-cat="Fitness">Fitness</div>'
+            '<div class="chip" data-cat="Grooming">Grooming</div>'
+            '<div class="chip" data-cat="Study">Study</div>'
+            '<div class="chip" data-cat="Nights out">Nights out</div></div>'
             '<div class="grid g3">%s</div></div>' % ''.join(cards))
     return page('Discounts', 'discounts', body)
 
@@ -721,6 +742,10 @@ def soc_card(emoji, bg, name, members, desc, slug):
             '</div></div></div></div>'
             % (bg, emoji, name, VERIFY, members, desc, SU_SOCIETIES_URL, ICONS['ext'], slug, slug, ICONS['arrow']))
 
+def your_societies_widget():
+    return ('<div class="widget"><div class="widget-head"><h3>Your Societies</h3></div>'
+            '<div class="your-soc-list" id="yourSocList"></div></div>')
+
 def build_societies():
     cards = [
         soc_card('🎬','linear-gradient(135deg,var(--lime),var(--sky))','Film Society','1,240','Weekly screenings, cult classics and trips to the cinema. All welcome.','film'),
@@ -728,12 +753,16 @@ def build_societies():
         soc_card('🎸','linear-gradient(135deg,var(--coral),var(--sky))','Music Society','690','Open mic nights, jam sessions and a termly showcase gig.','music'),
         soc_card('📷','linear-gradient(135deg,var(--sky),var(--coral))','Photography Society','730','Shoots around Cardiff, darkroom access and a termly exhibition.','photography'),
     ]
+    left = ('<div class="feed-col">'
+            '<div class="page-subhead"><h2>Join Societies</h2></div>'
+            '<div class="grid g3">%s</div>'
+            '%s</div>' % (''.join(cards), build_soc_directory()))
+    right = '<aside class="side-col">%s</aside>' % your_societies_widget()
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Find your people</div>'
             '<h1>Societies</h1>'
             '<div class="sub">These four have their own full space on Uni-Verse — chat, events, timetable and kit. Every other real Cardiff SU society and Athletic Union sports club is browsable and joinable further down. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
-            '<div class="grid g3">%s</div>'
-            '%s</div>' % (''.join(cards), build_soc_directory()))
+            '<div class="two-col">%s%s</div></div>' % (left, right))
     return page('Societies', 'societies', body)
 
 # ---------------- society detail page (chat, events, timetable, kit) ----------------
@@ -852,11 +881,15 @@ SOCIETY_PAGES = {
 }
 
 # ================= PAGE: FLATMATES =================
+def _price_num(price):
+    m = re.search(r'\d+', price)
+    return int(m.group()) if m else 0
+
 def flat_card(emoji, bg, area, title, poster, desc, price, available, spots, key):
     save_id = 'flatmate:' + key
     save_title = area + ' — ' + title
     save_meta = price + ' pcm · Available ' + available
-    return ('<div class="card"><div class="card-media" style="background:%s">'
+    return ('<div class="card" data-cat="%s" data-price="%s"><div class="card-media" style="background:%s">'
             '<span class="chip-cat">%s</span>'
             '<button class="save-heart" data-save-id="%s" data-save-title="%s" data-save-type="Flatmate" '
             'data-save-url="flatmates.html" data-save-meta="%s" data-save-color="var(--sky)">%s</button>'
@@ -867,7 +900,7 @@ def flat_card(emoji, bg, area, title, poster, desc, price, available, spots, key
             '<div class="card-info"><div class="bit">%s %s pcm</div><div class="bit">%s Available %s</div></div>'
             '<div class="card-foot"><span class="stat">%s</span>'
             '<button class="pill primary" data-rsvp="Message sent ✓" data-rsvp-key="flatmate-%s">Message</button></div></div></div>'
-            % (bg, area, save_id, save_title, save_meta, ICONS['heart'], emoji, title, poster, desc, ICONS['money'],
+            % (area, _price_num(price), bg, area, save_id, save_title, save_meta, ICONS['heart'], emoji, title, poster, desc, ICONS['money'],
                price, ICONS['cal'], available, spots, key))
 
 def build_flatmates():
@@ -907,11 +940,16 @@ def build_flatmates():
             '<h1>Find a housemate</h1>'
             '<div class="sub">Second and third years with a spare room, posted by the students who live there — not an agency, no fees. '
             'Browse what\'s going, or list your own room.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Cathays</div>'
-            '<div class="chip">Roath</div><div class="chip">Heath</div><div class="chip">Gabalfa</div>'
-            '<div class="chip">Canton</div><div class="chip">Cardiff Bay</div><div class="chip">Under £450</div></div>'
+            '<div class="chips" data-filter-grid="flatGrid"><div class="chip on">All</div>'
+            '<div class="chip" data-cat="Cathays">Cathays</div>'
+            '<div class="chip" data-cat="Roath">Roath</div>'
+            '<div class="chip" data-cat="Heath">Heath</div>'
+            '<div class="chip" data-cat="Gabalfa">Gabalfa</div>'
+            '<div class="chip" data-cat="Canton">Canton</div>'
+            '<div class="chip" data-cat="Cardiff Bay">Cardiff Bay</div>'
+            '<div class="chip" data-maxprice="450">Under £450</div></div>'
             '%s'
-            '<div class="grid g3">%s</div></div>' % (post_cta, ''.join(cards)))
+            '<div class="grid g3" id="flatGrid">%s</div></div>' % (post_cta, ''.join(cards)))
     return page('Find a housemate', 'flatmates', body)
 
 # ================= PAGE: MESSAGES =================
@@ -1124,7 +1162,11 @@ def build_map():
             '<div class="page-head"><div class="ey mono-eyebrow">Night out sorted</div>'
             '<h1>Clubs, bars, the SU &amp; BUCS near campus</h1>'
             '<div class="sub">Every club, bar, Students\' Union night and BUCS fixture students actually go to, pinned on the map — kept current, closed venues removed. Search to find one, tap a card to fly to it, or a pin to say you\'re going.</div></div>'
-            '<div class="chips"><div class="chip on">All</div><div class="chip">Student Union</div><div class="chip">Clubs</div><div class="chip">Bars</div><div class="chip">BUCS</div></div>'
+            '<div class="chips" id="mapChips"><div class="chip on">All</div>'
+            '<div class="chip" data-cat="Student Union">Student Union</div>'
+            '<div class="chip" data-cat="Club">Clubs</div>'
+            '<div class="chip" data-cat="Bar">Bars</div>'
+            '<div class="chip" data-cat="BUCS">BUCS</div></div>'
             '%s'
             '<div class="widget map-widget"><div id="venueMap"></div></div>'
             '%s%s'

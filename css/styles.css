@@ -319,6 +319,13 @@ a{color:inherit;text-decoration:none}
 .soc-row-cat{color:var(--muted);font-size:.72rem;margin-top:3px}
 .soc-row .soc-join{flex-shrink:0}
 @media(max-width:640px){.soc-dir-grid{grid-template-columns:1fr}}
+.page-subhead{margin-bottom:16px}
+.page-subhead h2{font-family:'Archivo';font-weight:900;font-size:1.3rem;letter-spacing:-.01em}
+a.soc-row{text-decoration:none;color:inherit;transition:.16s}
+a.soc-row:hover{border-color:var(--line-2)}
+.your-soc-list{display:flex;flex-direction:column;gap:8px}
+.your-soc-empty{padding:20px 6px;text-align:center;color:var(--muted);font-size:.82rem}
+.your-soc-more{text-align:center;color:var(--muted);font-size:.76rem;padding-top:2px}
 
 /* ---------- SOCIETY DETAIL PAGE ---------- */
 .soc-page-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
