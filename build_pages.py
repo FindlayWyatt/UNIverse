@@ -345,11 +345,8 @@ def build_society_page(slug, name, category, color):
                      '<a href="events.html">All events →</a></div><div class="up">%s</div></div>' % events_html)
     kit_widget = ('<div class="widget kit-banner"><div><h3 style="margin-bottom:4px">Find the merchandise</h3>'
                   '<div style="color:var(--muted);font-size:.85rem">Official society merch — order online, collect at the next social.</div></div>'
-                  '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'
-                  '<a class="pill primary" href="https://merch.uni-verse.app/%s" target="_blank" rel="noopener">Get the merchandise %s</a>'
-                  '<a class="ticket-link" href="https://merch.uni-verse.app/%s" target="_blank" rel="noopener">Find the merch %s</a>'
-                  '</div></div>'
-                  % (slug, ICONS['ext'], slug, ICONS['ext']))
+                  '<a class="pill primary" href="https://merch.uni-verse.app/%s" target="_blank" rel="noopener">Get the merchandise %s</a></div>'
+                  % (slug, ICONS['ext']))
     left = '<div class="feed-col">' + chat_widget + '</div>'
     right = '<aside class="side-col">' + events_widget + kit_widget + '</aside>'
     body = '<div class="content">' + header + '<div class="two-col">' + left + right + '</div></div>'
