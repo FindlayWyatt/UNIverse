@@ -347,7 +347,22 @@ def build_society_page(slug, name, category, color):
                   '<div style="color:var(--muted);font-size:.85rem">Official society merch — order online, collect at the next social.</div></div>'
                   '<a class="pill primary" href="https://merch.uni-verse.app/%s" target="_blank" rel="noopener">Get the merchandise %s</a></div>'
                   % (slug, ICONS['ext']))
-    left = '<div class="feed-col">' + chat_widget + '</div>'
+    # Sports clubs run separate 1st/2nd/3rd/4th teams, each with their own group — a prototype
+    # example kept to just this one club rather than rolling it out to all 269.
+    team_widget = ''
+    if name == "Men's Hockey Club":
+        team_chips = ''.join('<div class="chip" data-team="%s Team">%s Team</div>' % (n, n)
+                             for n in ('1st', '2nd', '3rd', '4th'))
+        team_widget = (
+            '<div class="widget"><div class="widget-head"><h3>Choose your team</h3></div>'
+            '<div class="chips" id="teamChips">%s</div></div>'
+            '<div class="widget" id="teamChatWidget" hidden>'
+            '<div class="widget-head"><h3 id="teamChatTitle">Team chat</h3></div>'
+            '<div class="soc-chat" id="teamChatBody"></div>'
+            '<div class="soc-chat-input"><input type="text" id="teamChatField" autocomplete="off" placeholder="Message your team…">'
+            '<button type="button" id="teamChatSend">%s</button></div></div>'
+            % (team_chips, ICONS['send']))
+    left = '<div class="feed-col">' + chat_widget + team_widget + '</div>'
     right = '<aside class="side-col">' + events_widget + kit_widget + '</aside>'
     body = '<div class="content">' + header + '<div class="two-col">' + left + right + '</div></div>'
     return page(name, 'societies', body)

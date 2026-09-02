@@ -335,7 +335,7 @@
       return true;
     }
     document.querySelectorAll('.chips').forEach(function (group) {
-      if (group.classList.contains('soc-dir-chips') || group.id === 'mapChips') return;
+      if (group.classList.contains('soc-dir-chips') || group.id === 'mapChips' || group.id === 'teamChips') return;
       var grid = group.dataset.filterGrid ? document.getElementById(group.dataset.filterGrid) : group.nextElementSibling;
       if (!grid) return;
       var cards = Array.from(grid.querySelectorAll('.card, .post'));
@@ -884,6 +884,78 @@
           socChatInput.value = '';
         });
       }
+    }
+
+    // ---- Men's Hockey Club: pick a team, get that team's own chat ----
+    // A prototype example of sports clubs having 1st/2nd/3rd/4th teams, each with its own
+    // group — kept to just this one club rather than every society. Only runs on that page,
+    // since #teamChips only exists there.
+    var teamChips = document.getElementById('teamChips');
+    if (teamChips) {
+      var teamChatWidget = document.getElementById('teamChatWidget');
+      var teamChatTitle = document.getElementById('teamChatTitle');
+      var teamChatBody = document.getElementById('teamChatBody');
+      var teamChatField = document.getElementById('teamChatField');
+      var teamChatSend = document.getElementById('teamChatSend');
+      var TEAM_STORAGE_KEY = 'uv-hockey-team';
+
+      function teamChatKey(team) { return 'uv-team-chat-' + team; }
+      function getTeamChat(team) {
+        try { return JSON.parse(window.localStorage.getItem(teamChatKey(team)) || '[]'); } catch (e) { return []; }
+      }
+      function saveTeamChat(team, msgs) {
+        try { window.localStorage.setItem(teamChatKey(team), JSON.stringify(msgs)); } catch (e) {}
+      }
+      function renderTeamMsg(m) {
+        if (m.self) {
+          return '<div class="soc-msg self"><div class="soc-msg-ava" style="background:var(--lime);color:var(--ink)">FW</div>'
+            + '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">You</span>'
+            + '<span class="soc-msg-time">' + (m.time || 'Just now') + '</span></div>'
+            + '<div class="soc-msg-text">' + m.text + '</div></div></div>';
+        }
+        return '<div class="soc-msg"><div class="soc-msg-ava" style="background:var(--sky)">' + initialsOf(m.name) + '</div>'
+          + '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">' + m.name + '</span></div>'
+          + '<div class="soc-msg-text">' + m.text + '</div></div></div>';
+      }
+      function openTeam(team) {
+        teamChips.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('on', c.dataset.team === team); });
+        teamChatTitle.textContent = team + ' chat';
+        var msgs = getTeamChat(team);
+        if (!msgs.length) {
+          msgs = [{ name: team, text: 'Welcome to the ' + team + ' chat — say hi 👋' }];
+          saveTeamChat(team, msgs);
+        }
+        teamChatBody.innerHTML = msgs.map(renderTeamMsg).join('');
+        teamChatBody.scrollTop = teamChatBody.scrollHeight;
+        teamChatWidget.hidden = false;
+        try { window.localStorage.setItem(TEAM_STORAGE_KEY, team); } catch (e) {}
+      }
+      teamChips.querySelectorAll('.chip').forEach(function (c) {
+        c.addEventListener('click', function () { openTeam(c.dataset.team); });
+      });
+      function sendTeamChat(text) {
+        var activeChip = teamChips.querySelector('.chip.on');
+        var team = activeChip ? activeChip.dataset.team : null;
+        if (!team || !text) return;
+        var msgs = getTeamChat(team);
+        msgs.push({ text: text, self: true, time: 'Just now' });
+        saveTeamChat(team, msgs);
+        openTeam(team);
+      }
+      if (teamChatField) {
+        teamChatField.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { sendTeamChat(teamChatField.value.trim()); teamChatField.value = ''; }
+        });
+      }
+      if (teamChatSend) {
+        teamChatSend.addEventListener('click', function () {
+          sendTeamChat(teamChatField.value.trim());
+          teamChatField.value = '';
+        });
+      }
+      var savedTeam = null;
+      try { savedTeam = window.localStorage.getItem(TEAM_STORAGE_KEY); } catch (e) {}
+      if (savedTeam) openTeam(savedTeam);
     }
 
     // ---- venue map (clubs & bars) ----
