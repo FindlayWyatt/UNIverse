@@ -302,7 +302,7 @@ SOC_EVENTS = {
                               'iso': '2026-10-11', 'time': '2:00pm', 'color': 'var(--lime)'}],
 }
 
-# ---------------- every real society's own page (chat, events, kit) — unlocked once you join ----------------
+# ---------------- every real society's own page (chat, events, merchandise) — unlocked once you join ----------------
 def build_society_page(slug, name, category, color):
     header = ('<div class="soc-page-head"><div class="soc-page-ava" style="background:%s;font-size:1.4rem">%s</div>'
               '<div><h1 style="margin-bottom:4px">%s</h1><div class="sub">%s</div></div></div>'
@@ -333,9 +333,9 @@ def build_society_page(slug, name, category, color):
                        '<a href="events.html">Events</a> for what\'s on at Cardiff.</div>')
     events_widget = ('<div class="widget"><div class="widget-head"><h3>Upcoming events</h3>'
                      '<a href="events.html">All events →</a></div><div class="up">%s</div></div>' % events_html)
-    kit_widget = ('<div class="widget kit-banner"><div><h3 style="margin-bottom:4px">Find the kit</h3>'
+    kit_widget = ('<div class="widget kit-banner"><div><h3 style="margin-bottom:4px">Find the merchandise</h3>'
                   '<div style="color:var(--muted);font-size:.85rem">Official society merch — order online, collect at the next social.</div></div>'
-                  '<a class="pill primary" href="https://kit.uni-verse.app/%s" target="_blank" rel="noopener">Get the kit %s</a></div>'
+                  '<a class="pill primary" href="https://merch.uni-verse.app/%s" target="_blank" rel="noopener">Get the merchandise %s</a></div>'
                   % (slug, ICONS['ext']))
     left = '<div class="feed-col">' + chat_widget + '</div>'
     right = '<aside class="side-col">' + events_widget + kit_widget + '</aside>'
@@ -794,7 +794,7 @@ def build_societies():
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Find your people</div>'
             '<h1>Societies</h1>'
-            '<div class="sub">The full, real Cardiff SU societies directory and every Athletic Union sports club. Request to join and, once accepted, you get that society\'s own page — chat, events and where to get the kit. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
+            '<div class="sub">The full, real Cardiff SU societies directory and every Athletic Union sports club. Request to join and, once accepted, you get that society\'s own page — chat, events and where to get the merchandise. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
             '<div class="two-col">%s%s</div></div>' % (left, right))
     return page('Societies', 'societies', body)
 
