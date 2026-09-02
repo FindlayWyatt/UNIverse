@@ -271,10 +271,11 @@ def _initials(name):
 _ROW_COLORS = ['var(--lime)', 'var(--sky)', 'var(--coral)', 'var(--amber)']
 
 # Feed the whole real directory into the sitewide topbar search too, so any of the 265 real
-# societies/sports clubs turns up from anywhere on the site, not just the Societies page itself.
+# societies/sports clubs turns up from anywhere on the site, not just the Societies page itself
+# — pointing straight at that society's own page.
 for _cat, _names in REAL_SOCIETIES:
     for _name in _names:
-        SEARCH_INDEX.append({'t': _name, 'c': _cat, 'u': 'societies.html?soc=' + _slugify(_name), 'd': _cat})
+        SEARCH_INDEX.append({'t': _name, 'c': _cat, 'u': _slugify(_name) + '.html', 'd': _cat})
 
 def soc_dir_row(name, category, color):
     slug = _slugify(name)
@@ -283,10 +284,63 @@ def soc_dir_row(name, category, color):
             '<div class="soc-row-body"><div class="soc-row-name">%s</div>'
             '<div class="soc-row-cat">%s</div></div>'
             '<div class="soc-row-actions">'
-            '<button type="button" class="soc-view" data-society="%s" data-name="%s" data-cat="%s">View</button>'
+            '<a class="soc-view" href="%s.html" hidden>View society %s</a>'
             '<button class="soc-join" data-society="%s">Join</button>'
             '</div></div>'
-            % (category, name.lower(), color, _initials(name), name, category, slug, name, category, slug))
+            % (category, name.lower(), color, _initials(name), name, category, slug, ICONS['arrow'], slug))
+
+# Real events that already exist on Events/BUCS which happen to be hosted by one of the real
+# societies below — surfaced again on that society's own page once you're in, rather than
+# inventing separate ones. Most societies don't have a matching event yet, so their page gets
+# an honest empty state pointing at the Events page instead.
+SOC_EVENTS = {
+    'Film Society': [{'title': 'Film Night: Cult Classics', 'date': 'Sun 12 Oct · 6pm', 'place': 'SU Cinema',
+                       'iso': '2026-10-12', 'time': '6:00pm', 'color': 'var(--coral)'}],
+    'Music Society': [{'title': 'Open Mic Night', 'date': 'Fri 3 Oct · 8pm', 'place': 'The Taf',
+                        'iso': '2026-10-03', 'time': '8:00pm', 'color': 'var(--coral)'}],
+    'Mountaineering Club': [{'title': 'Give It A Go: Bouldering', 'date': 'Sat 11 Oct · 2pm', 'place': 'Boulders CDF',
+                              'iso': '2026-10-11', 'time': '2:00pm', 'color': 'var(--lime)'}],
+}
+
+# ---------------- every real society's own page (chat, events, kit) — unlocked once you join ----------------
+def build_society_page(slug, name, category, color):
+    header = ('<div class="soc-page-head"><div class="soc-page-ava" style="background:%s;font-size:1.4rem">%s</div>'
+              '<div><h1 style="margin-bottom:4px">%s</h1><div class="sub">%s</div></div></div>'
+              % (color, _initials(name), name, category))
+    chat_widget = ('<div class="widget"><div class="widget-head"><h3>Society chat</h3></div>'
+                   '<div class="soc-chat">'
+                   '<div class="soc-msg"><div class="soc-msg-ava" style="background:%s">%s</div>'
+                   '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">%s</span></div>'
+                   '<div class="soc-msg-text">Welcome to the %s group chat — say hi 👋</div></div></div>'
+                   '</div>'
+                   '<div class="soc-chat-input"><input type="text" class="soc-chat-field" autocomplete="off" placeholder="Message the group…">'
+                   '<button class="soc-chat-send">%s</button></div></div>'
+                   % (color, _initials(name), name, name, ICONS['send']))
+    evs = SOC_EVENTS.get(name, [])
+    if evs:
+        rows = []
+        for ev in evs:
+            bits = ev['date'].split(' ')
+            rows.append('<div class="up-item"><div class="up-date"><div class="d">%s</div><div class="m">%s</div></div>'
+                        '<div class="up-body"><div class="t">%s</div><div class="meta"><span class="k" style="background:%s"></span>%s</div>'
+                        '<button class="pill primary" data-rsvp="Going ✓" data-cal-title="%s" data-cal-date="%s" '
+                        'data-cal-time="%s" data-cal-place="%s" data-cal-color="%s">I\'m attending</button>'
+                        '</div></div>' % (bits[1], bits[2], ev['title'], ev['color'], ev['place'],
+                                           ev['title'], ev['iso'], ev['time'], ev['place'], ev['color']))
+        events_html = ''.join(rows)
+    else:
+        events_html = ('<div class="your-soc-empty">No upcoming events posted by this society yet — check '
+                       '<a href="events.html">Events</a> for what\'s on at Cardiff.</div>')
+    events_widget = ('<div class="widget"><div class="widget-head"><h3>Upcoming events</h3>'
+                     '<a href="events.html">All events →</a></div><div class="up">%s</div></div>' % events_html)
+    kit_widget = ('<div class="widget kit-banner"><div><h3 style="margin-bottom:4px">Find the kit</h3>'
+                  '<div style="color:var(--muted);font-size:.85rem">Official society merch — order online, collect at the next social.</div></div>'
+                  '<a class="pill primary" href="https://kit.uni-verse.app/%s" target="_blank" rel="noopener">Get the kit %s</a></div>'
+                  % (slug, ICONS['ext']))
+    left = '<div class="feed-col">' + chat_widget + '</div>'
+    right = '<aside class="side-col">' + events_widget + kit_widget + '</aside>'
+    body = '<div class="content">' + header + '<div class="two-col">' + left + right + '</div></div>'
+    return page(name, 'societies', body)
 
 def build_soc_directory():
     rows = []
@@ -734,48 +788,14 @@ def your_societies_widget():
     return ('<div class="widget"><div class="widget-head"><h3>Your Societies</h3></div>'
             '<div class="your-soc-list" id="yourSocList"></div></div>')
 
-# Real events that already exist on Events/BUCS which happen to be hosted by one of the real
-# societies below — surfaced again in that society's own "Upcoming events" list once you open
-# it, rather than inventing separate ones. Most societies don't have a matching event yet, so
-# they get an honest empty state pointing at the Events page instead.
-SOC_EVENTS = {
-    'Film Society': [{'title': 'Film Night: Cult Classics', 'date': 'Sun 12 Oct · 6pm', 'place': 'SU Cinema',
-                       'iso': '2026-10-12', 'time': '6:00pm', 'color': 'var(--coral)'}],
-    'Music Society': [{'title': 'Open Mic Night', 'date': 'Fri 3 Oct · 8pm', 'place': 'The Taf',
-                        'iso': '2026-10-03', 'time': '8:00pm', 'color': 'var(--coral)'}],
-    'Mountaineering Club': [{'title': 'Give It A Go: Bouldering', 'date': 'Sat 11 Oct · 2pm', 'place': 'Boulders CDF',
-                              'iso': '2026-10-11', 'time': '2:00pm', 'color': 'var(--lime)'}],
-}
-
 def build_societies():
     left = '<div class="feed-col">%s</div>' % build_soc_directory()
     right = '<aside class="side-col">%s</aside>' % your_societies_widget()
-    # One shared modal, filled in by JS for whichever society you click "View" on — same
-    # chat + upcoming-events layout the old featured pages had, now working for all 269.
-    soc_modal = ('<div class="flat-modal-overlay" id="socModalOverlay" hidden>'
-                '<div class="flat-modal soc-modal" id="socModal">'
-                '<button type="button" class="flat-modal-close" id="socModalClose" aria-label="Close">%s</button>'
-                '<div class="flat-modal-body">'
-                '<div class="soc-page-head">'
-                '<div class="soc-page-ava" id="socModalAva" style="background:var(--sky);font-size:1.3rem"></div>'
-                '<div><h3 id="socModalName" style="margin-bottom:4px"></h3>'
-                '<div class="sub" id="socModalCat"></div></div></div>'
-                '<button type="button" class="soc-join" id="socModalJoin" style="width:100%%;justify-content:center;margin-bottom:20px">Join</button>'
-                '<div class="widget-head"><h3>Society chat</h3></div>'
-                '<div class="soc-chat" id="socModalChat"></div>'
-                '<div class="soc-chat-input"><input type="text" id="socModalChatField" autocomplete="off" placeholder="Message the group…">'
-                '<button type="button" id="socModalChatSend">%s</button></div>'
-                '<div class="widget-head" style="margin-top:24px"><h3>Upcoming events</h3></div>'
-                '<div class="up" id="socModalEvents"></div>'
-                '</div></div></div>' % (ICONS['close'], ICONS['send']))
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Find your people</div>'
             '<h1>Societies</h1>'
-            '<div class="sub">The full, real Cardiff SU societies directory and every Athletic Union sports club — browsable and joinable in a tap. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
-            '<div class="two-col">%s%s</div>'
-            '%s'
-            '<script>window.UV_SOC_EVENTS = %s;</script>'
-            '</div>' % (left, right, soc_modal, json.dumps(SOC_EVENTS)))
+            '<div class="sub">The full, real Cardiff SU societies directory and every Athletic Union sports club. Request to join and, once accepted, you get that society\'s own page — chat, events and where to get the kit. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
+            '<div class="two-col">%s%s</div></div>' % (left, right))
     return page('Societies', 'societies', body)
 
 # ================= PAGE: FLATMATES =================
@@ -1391,6 +1411,13 @@ pages = {
     'landing.html': build_landing(),
     'login.html': build_login(),
 }
+SOCIETY_PAGES = {}
+for _i, (_cat, _names) in enumerate(REAL_SOCIETIES):
+    _color = _ROW_COLORS[_i % len(_ROW_COLORS)]
+    for _name in _names:
+        _slug = _slugify(_name)
+        SOCIETY_PAGES[_slug + '.html'] = build_society_page(_slug, _name, _cat, _color)
+pages.update(SOCIETY_PAGES)
 for fn, html in pages.items():
     with open(os.path.join(OUT, fn), 'w', encoding='utf-8') as f:
         f.write(html)

@@ -479,10 +479,9 @@
     });
 
     // ---- join buttons (societies) ----
-    // Every row in the real directory (and the society modal's own Join button) carries
-    // data-society, so a join made from either place stays in sync with the other. The
-    // Feed's small "trending societies" widget has no data-society — those just toggle
-    // Join/Joined with no approval flow.
+    // Cards on the Societies grid carry data-society and unlock a "View society" link once
+    // the (simulated) host accepts the request. The Feed's small "trending societies" widget
+    // has no data-society — those just toggle Join/Joined with no approval flow.
     function isSocietyJoined(slug) {
       try { return window.localStorage.getItem('uv-joined-' + slug) !== null; } catch (e) { return false; }
     }
@@ -491,13 +490,16 @@
     }
     function refreshJoinButton(b) {
       var slug = b.dataset.society;
+      var viewLink = b.parentElement ? b.parentElement.querySelector('.soc-view') : null;
       if (slug && isSocietyJoined(slug)) {
-        b.classList.remove('pending');
+        b.classList.remove('pending', 'accepted');
         b.classList.add('joined');
         b.textContent = 'Joined ✓';
+        if (viewLink) viewLink.hidden = false;
       } else {
         b.classList.remove('joined');
-        if (b.textContent !== 'Requesting…') b.textContent = 'Join';
+        if (viewLink) viewLink.hidden = true;
+        if (b.textContent !== 'Requesting…' && b.textContent !== 'Accepted! 🎉') b.textContent = 'Join';
       }
     }
     document.querySelectorAll('.soc-join').forEach(function (b) {
@@ -514,16 +516,22 @@
         b.classList.add('pending');
         b.textContent = 'Requesting…';
         setTimeout(function () {
-          setSocietyJoined(slug);
-          // sync every button tied to this society — the directory row and, if open, the modal
-          document.querySelectorAll('.soc-join[data-society="' + slug + '"]').forEach(refreshJoinButton);
-          renderYourSocieties();
+          // the host accepts the request — a brief "Accepted!" beat before it settles into
+          // Joined and unlocks that society's own page (chat, events, kit)
+          b.classList.remove('pending');
+          b.classList.add('accepted');
+          b.textContent = 'Accepted! 🎉';
+          setTimeout(function () {
+            setSocietyJoined(slug);
+            document.querySelectorAll('.soc-join[data-society="' + slug + '"]').forEach(refreshJoinButton);
+            renderYourSocieties();
+          }, 1100);
         }, 1400);
       });
     });
 
     // ---- "Your Societies" widget (societies.html) — every joined society, resolved against ----
-    // the sitewide search index so both the featured 4 and the real 265-entry directory work.
+    // the sitewide search index, which points each of the 269 real ones at its own page.
     function renderYourSocieties() {
       var list = document.getElementById('yourSocList');
       if (!list) return;
@@ -535,7 +543,7 @@
             var slug = k.replace('uv-joined-', '');
             var ts = parseInt(window.localStorage.getItem(k), 10);
             var match = (window.UV_SEARCH || []).find(function (i) {
-              return i.u === 'society-' + slug + '.html' || i.u === 'societies.html?soc=' + slug;
+              return i.u === slug + '.html';
             });
             return match ? { name: match.t, cat: match.c, url: match.u, ts: isNaN(ts) ? 0 : ts } : null;
           })
@@ -850,121 +858,32 @@
         });
       });
 
-      // ---- deep link from sitewide search: societies.html?soc=<slug> scrolls straight to it ----
-      var wantedSlug = new URLSearchParams(window.location.search).get('soc');
-      if (wantedSlug) {
-        var wantedBtn = socDirGrid.querySelector('.soc-join[data-society="' + wantedSlug + '"]');
-        var wantedRow = wantedBtn ? wantedBtn.closest('.soc-row') : null;
-        if (wantedRow) {
-          setTimeout(function () {
-            wantedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            wantedRow.classList.add('soc-row-flash');
-            setTimeout(function () { wantedRow.classList.remove('soc-row-flash'); }, 2200);
-          }, 100);
-        }
-      }
     }
 
-    // ---- society modal: chat + upcoming events, for any of the 269 real societies ----
-    // One shared modal (societies.html) filled in per-society by "View" — same layout the
-    // old 4 featured pages had, now working for the whole real directory. Chat persists per
-    // society in localStorage; events come from UV_SOC_EVENTS (real Events-page entries that
-    // happen to be hosted by that society) or an honest empty state if there aren't any yet.
-    var socModalOverlay = document.getElementById('socModalOverlay');
-    if (socModalOverlay) {
-      var socModalAva = document.getElementById('socModalAva');
-      var socModalName = document.getElementById('socModalName');
-      var socModalCat = document.getElementById('socModalCat');
-      var socModalJoin = document.getElementById('socModalJoin');
-      var socModalChat = document.getElementById('socModalChat');
-      var socModalChatField = document.getElementById('socModalChatField');
-      var socModalChatSend = document.getElementById('socModalChatSend');
-      var socModalEvents = document.getElementById('socModalEvents');
-      var socModalClose = document.getElementById('socModalClose');
-
-      function socChatKey(slug) { return 'uv-soc-chat-' + slug; }
-      function getSocChat(slug) {
-        try { return JSON.parse(window.localStorage.getItem(socChatKey(slug)) || '[]'); } catch (e) { return []; }
-      }
-      function saveSocChat(slug, msgs) {
-        try { window.localStorage.setItem(socChatKey(slug), JSON.stringify(msgs)); } catch (e) {}
-      }
-      function renderSocMsg(m) {
-        if (m.self) {
-          return '<div class="soc-msg self"><div class="soc-msg-ava" style="background:var(--lime);color:var(--ink)">FW</div>'
-            + '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">You</span>'
-            + '<span class="soc-msg-time">' + (m.time || 'Just now') + '</span></div>'
-            + '<div class="soc-msg-text">' + m.text + '</div></div></div>';
-        }
-        return '<div class="soc-msg"><div class="soc-msg-ava" style="background:var(--sky)">' + initialsOf(m.name || 'Society') + '</div>'
-          + '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">' + (m.name || 'Society') + '</span>'
-          + '<span class="soc-msg-time">' + (m.time || '') + '</span></div>'
-          + '<div class="soc-msg-text">' + m.text + '</div></div></div>';
-      }
-      function renderSocChat(slug, name) {
-        var msgs = getSocChat(slug);
-        if (!msgs.length) {
-          msgs = [{ name: name, text: 'Welcome to the ' + name + ' group chat — say hi 👋', self: false }];
-          saveSocChat(slug, msgs);
-        }
-        socModalChat.innerHTML = msgs.map(renderSocMsg).join('');
-        socModalChat.scrollTop = socModalChat.scrollHeight;
-      }
-      function sendSocChat(slug, name, text) {
-        if (!text) return;
-        var msgs = getSocChat(slug);
-        msgs.push({ text: text, self: true, time: 'Just now' });
-        saveSocChat(slug, msgs);
-        renderSocChat(slug, name);
-      }
-      function renderSocEvents(name) {
-        var evs = (window.UV_SOC_EVENTS || {})[name] || [];
-        if (!evs.length) {
-          socModalEvents.innerHTML = '<div class="your-soc-empty">No upcoming events posted by this society yet — check <a href="events.html">Events</a> for what\'s on at Cardiff.</div>';
-          return;
-        }
-        socModalEvents.innerHTML = evs.map(function (ev) {
-          var bits = ev.date.split(' ');
-          return '<div class="up-item"><div class="up-date"><div class="d">' + bits[1] + '</div><div class="m">' + bits[2] + '</div></div>'
-            + '<div class="up-body"><div class="t">' + ev.title + '</div>'
-            + '<div class="meta"><span class="k" style="background:' + ev.color + '"></span>' + ev.place + '</div>'
-            + '<button class="pill primary" data-rsvp="Going ✓" data-cal-title="' + ev.title + '" data-cal-date="' + ev.iso
-            + '" data-cal-time="' + ev.time + '" data-cal-place="' + ev.place + '" data-cal-color="' + ev.color
-            + '">I\'m attending</button></div></div>';
-        }).join('');
-        socModalEvents.querySelectorAll('[data-rsvp]').forEach(wireRsvpButton);
-      }
-      function openSocModal(slug, name, cat) {
-        socModalAva.textContent = initialsOf(name);
-        socModalName.textContent = name;
-        socModalCat.textContent = cat;
-        socModalJoin.dataset.society = slug;
-        refreshJoinButton(socModalJoin);
-        renderSocChat(slug, name);
-        renderSocEvents(name);
-        socModalOverlay.hidden = false;
-      }
-      function closeSocModal() { socModalOverlay.hidden = true; }
-      if (socModalClose) socModalClose.addEventListener('click', closeSocModal);
-      socModalOverlay.addEventListener('click', function (e) { if (e.target === socModalOverlay) closeSocModal(); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !socModalOverlay.hidden) closeSocModal(); });
-      if (socModalChatField) {
-        socModalChatField.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') { sendSocChat(socModalJoin.dataset.society, socModalName.textContent, socModalChatField.value.trim()); socModalChatField.value = ''; }
-        });
-      }
-      if (socModalChatSend) {
-        socModalChatSend.addEventListener('click', function () {
-          sendSocChat(socModalJoin.dataset.society, socModalName.textContent, socModalChatField.value.trim());
-          socModalChatField.value = '';
-        });
-      }
-      document.querySelectorAll('.soc-view').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          openSocModal(btn.dataset.society, btn.dataset.name, btn.dataset.cat);
-        });
+    // ---- society chat: post your own message into the group thread (a real society's own page) ----
+    var socChatInput = document.querySelector('.soc-chat-field');
+    var socChatBody = document.querySelector('.soc-chat');
+    function sendSocietyChat(text) {
+      if (!text || !socChatBody) return;
+      var m = document.createElement('div');
+      m.className = 'soc-msg self';
+      m.innerHTML = '<div class="soc-msg-ava" style="background:var(--lime);color:var(--ink)">FW</div>'
+        + '<div class="soc-msg-body"><div class="soc-msg-head"><span class="soc-msg-name">You</span>'
+        + '<span class="soc-msg-time">Just now</span></div><div class="soc-msg-text">' + text + '</div></div>';
+      socChatBody.appendChild(m);
+      socChatBody.scrollTop = socChatBody.scrollHeight;
+    }
+    if (socChatInput) {
+      var socChatSend = document.querySelector('.soc-chat-send');
+      socChatInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { sendSocietyChat(socChatInput.value.trim()); socChatInput.value = ''; }
       });
+      if (socChatSend) {
+        socChatSend.addEventListener('click', function () {
+          sendSocietyChat(socChatInput.value.trim());
+          socChatInput.value = '';
+        });
+      }
     }
 
     // ---- venue map (clubs & bars) ----
