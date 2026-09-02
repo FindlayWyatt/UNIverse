@@ -289,10 +289,12 @@ def soc_dir_row(name, category, color):
             '</div></div>'
             % (category, name.lower(), color, _initials(name), name, category, slug, ICONS['arrow'], slug))
 
-# Real events that already exist on Events/BUCS which happen to be hosted by one of the real
-# societies below — surfaced again on that society's own page once you're in, rather than
-# inventing separate ones. Most societies don't have a matching event yet, so their page gets
-# an honest empty state pointing at the Events page instead.
+# Mostly real events that already exist on Events/BUCS which happen to be hosted by one of the
+# real societies below — surfaced again on that society's own page once you're in, rather than
+# inventing separate ones. Most societies don't have a matching event yet, so their page gets an
+# honest empty state pointing at the Events page instead. The one exception is Men's Hockey Club,
+# which gets a small illustrative set (training, a social, a friendly) just to show what a fuller
+# events list looks like — deliberately kept to this one club, not rolled out site-wide.
 SOC_EVENTS = {
     'Film Society': [{'title': 'Film Night: Cult Classics', 'date': 'Sun 12 Oct · 6pm', 'place': 'SU Cinema',
                        'iso': '2026-10-12', 'time': '6:00pm', 'color': 'var(--coral)'}],
@@ -300,6 +302,14 @@ SOC_EVENTS = {
                         'iso': '2026-10-03', 'time': '8:00pm', 'color': 'var(--coral)'}],
     'Mountaineering Club': [{'title': 'Give It A Go: Bouldering', 'date': 'Sat 11 Oct · 2pm', 'place': 'Boulders CDF',
                               'iso': '2026-10-11', 'time': '2:00pm', 'color': 'var(--lime)'}],
+    "Men's Hockey Club": [
+        {'title': 'Weekly Training', 'date': 'Tue 15 Sep · 7pm', 'place': 'Talybont Sports Centre',
+         'iso': '2026-09-15', 'time': '7:00pm', 'color': 'var(--sky)'},
+        {'title': 'Club Social: Kit Collection & Pizza', 'date': 'Fri 18 Sep · 8pm', 'place': 'The Taf',
+         'iso': '2026-09-18', 'time': '8:00pm', 'color': 'var(--coral)'},
+        {'title': 'Friendly vs Swansea', 'date': 'Sat 26 Sep · 1pm', 'place': 'Sports Fields, Llanrumney',
+         'iso': '2026-09-26', 'time': '1:00pm', 'color': 'var(--lime)'},
+    ],
 }
 
 # ---------------- every real society's own page (chat, events, merchandise) — unlocked once you join ----------------
