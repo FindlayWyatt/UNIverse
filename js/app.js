@@ -447,7 +447,7 @@
     // ---- saved list (full page + the Account page's preview widget) ----
     var ICON_CLOSE = '<svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>';
     var ICON_HEART = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.8 5.6a5.5 5.5 0 00-7.8 0L12 6.6l-1-1a5.5 5.5 0 10-7.8 7.8l1 1L12 22l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>';
-    var ICON_MONEY = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>';
+    var ICON_MONEY = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M6 9v.01M18 15v.01"/></svg>';
     function savedRowHtml(it, preview) {
       var meta = it.meta ? '<div class="saved-meta">' + it.meta + '</div>' : '';
       var remove = preview ? '' : '<button class="saved-remove" data-id="' + it.id + '" aria-label="Remove from saved">' + ICON_CLOSE + '</button>';
@@ -600,8 +600,11 @@
       }
       function flatCardEl(item) {
         var wrap = document.createElement('div');
-        var mediaInner = item.photo
-          ? '<img src="' + item.photo + '" alt="" style="width:100%;height:100%;object-fit:cover">'
+        // .photos is the current (array) shape; .photo is kept as a fallback for older saved listings
+        var photos = item.photos && item.photos.length ? item.photos : (item.photo ? [item.photo] : []);
+        var mediaInner = photos.length
+          ? '<div class="flat-gallery">' + photos.map(function (p) { return '<img src="' + p + '" alt="">'; }).join('') + '</div>'
+            + (photos.length > 1 ? '<span class="flat-gallery-count">' + photos.length + ' photos</span>' : '')
           : '<span class="emoji">🏠</span>';
         var saveId = 'flatmate:' + item.id;
         var saveTitle = item.area + ' — Spare room';
@@ -621,7 +624,7 @@
           + '<span class="stat">New listing</span>'
           + '<div class="post-actions">'
           + '<button type="button" class="pill flat-view-btn">View</button>'
-          + '<button class="pill primary" data-rsvp="Message sent ✓" data-rsvp-key="flatmate-' + item.id + '">Message</button>'
+          + '<button class="pill primary" data-rsvp="Interest sent ✓" data-rsvp-key="flatmate-' + item.id + '">Show interest</button>'
           + '</div></div>'
           + '<div class="card-foot flat-delete-row" hidden>'
           + '<span class="stat">Delete this listing?</span>'
@@ -684,27 +687,32 @@
         if (flatCancelBtn) flatCancelBtn.addEventListener('click', function () { flatAddForm.hidden = true; });
 
         var photoInput = document.getElementById('flatFPhoto');
-        var photoPreview = document.getElementById('flatPhotoPreview');
-        var photoPreviewImg = document.getElementById('flatPhotoPreviewImg');
-        var photoRemoveBtn = document.getElementById('flatPhotoRemove');
-        var currentPhoto = '';
+        var photoThumbs = document.getElementById('flatPhotoThumbs');
+        var currentPhotos = [];
 
-        if (photoInput) {
-          photoInput.addEventListener('change', function () {
-            var file = photoInput.files && photoInput.files[0];
-            if (!file) return;
-            downscaleImage(file, 480, function (dataUrl) {
-              currentPhoto = dataUrl;
-              photoPreviewImg.src = dataUrl;
-              photoPreview.hidden = false;
+        function renderPhotoThumbs() {
+          if (!photoThumbs) return;
+          photoThumbs.innerHTML = currentPhotos.map(function (src, i) {
+            return '<div class="flat-photo-thumb"><img src="' + src + '" alt="">'
+              + '<button type="button" data-idx="' + i + '" aria-label="Remove photo">' + ICON_CLOSE + '</button></div>';
+          }).join('');
+          photoThumbs.querySelectorAll('button').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              currentPhotos.splice(parseInt(btn.dataset.idx, 10), 1);
+              renderPhotoThumbs();
             });
           });
         }
-        if (photoRemoveBtn) {
-          photoRemoveBtn.addEventListener('click', function () {
-            currentPhoto = '';
+        if (photoInput) {
+          photoInput.addEventListener('change', function () {
+            var files = Array.from(photoInput.files || []);
+            files.forEach(function (file) {
+              downscaleImage(file, 480, function (dataUrl) {
+                currentPhotos.push(dataUrl);
+                renderPhotoThumbs();
+              });
+            });
             photoInput.value = '';
-            photoPreview.hidden = true;
           });
         }
 
@@ -723,7 +731,7 @@
             if (flatFormError) flatFormError.hidden = true;
             var item = {
               id: 'user-' + Date.now(), area: area, price: price, desc: desc,
-              photo: currentPhoto, poster: posterName()
+              photos: currentPhotos.slice(), poster: posterName()
             };
             var items = getUserFlats();
             items.push(item);
@@ -735,8 +743,8 @@
             renderYourListings();
 
             areaInput.value = ''; priceInput.value = ''; descInput.value = '';
-            currentPhoto = ''; if (photoInput) photoInput.value = '';
-            if (photoPreview) photoPreview.hidden = true;
+            currentPhotos = []; if (photoInput) photoInput.value = '';
+            renderPhotoThumbs();
             flatAddForm.hidden = true;
           });
         }
@@ -747,11 +755,16 @@
       function openFlatModal(card) {
         if (!flatModalOverlay) return;
         var media = card.querySelector('.card-media');
-        var img = media ? media.querySelector('img') : null;
+        var imgs = media ? Array.from(media.querySelectorAll('img')) : [];
         var emoji = media ? media.querySelector('.emoji') : null;
-        document.getElementById('flatModalMedia').innerHTML = img
-          ? '<img src="' + img.src + '" alt="">'
-          : '<span class="emoji">' + (emoji ? emoji.textContent : '🏠') + '</span>';
+        var modalMedia = document.getElementById('flatModalMedia');
+        if (imgs.length) {
+          modalMedia.innerHTML = '<div class="flat-gallery">'
+            + imgs.map(function (i) { return '<img src="' + i.src + '" alt="">'; }).join('')
+            + '</div>' + (imgs.length > 1 ? '<span class="flat-gallery-count">' + imgs.length + ' photos</span>' : '');
+        } else {
+          modalMedia.innerHTML = '<span class="emoji">' + (emoji ? emoji.textContent : '🏠') + '</span>';
+        }
         document.getElementById('flatModalArea').textContent = card.querySelector('.chip-cat').textContent;
         document.getElementById('flatModalTitle').textContent = card.querySelector('h3').textContent;
         document.getElementById('flatModalPoster').textContent = card.querySelector('.by').textContent;
@@ -767,10 +780,10 @@
         }
         var modalMsgBtn = document.getElementById('flatModalMessage');
         var realMsgBtn = card.querySelector('[data-rsvp]');
-        modalMsgBtn.textContent = realMsgBtn ? realMsgBtn.textContent : 'Message';
+        modalMsgBtn.textContent = realMsgBtn ? realMsgBtn.textContent : 'Show interest';
         modalMsgBtn.onclick = function () {
           if (realMsgBtn) realMsgBtn.click();
-          modalMsgBtn.textContent = realMsgBtn ? realMsgBtn.textContent : 'Message';
+          modalMsgBtn.textContent = realMsgBtn ? realMsgBtn.textContent : 'Show interest';
         };
         flatModalOverlay.hidden = false;
       }

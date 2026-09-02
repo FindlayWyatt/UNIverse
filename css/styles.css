@@ -34,6 +34,12 @@
   --text:#111111;--muted:#6E6E6E;
   --line:rgba(0,0,0,.12);--line-2:rgba(0,0,0,.2);
 }
+[data-theme="blackred"]{
+  --ink:#F2F2F2;--ink-2:#FFFFFF;--card:#FFFFFF;--card-2:#F7F7F7;
+  --lime:#E10600;--coral:#000000;--sky:#0A7EA4;--amber:#8B0000;
+  --text:#111111;--muted:#6E6E6E;
+  --line:rgba(0,0,0,.12);--line-2:rgba(0,0,0,.2);
+}
 
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -375,6 +381,8 @@ a.soc-row:hover{border-color:var(--line-2)}
 
 footer{padding:22px 30px;border-top:1px solid var(--line);color:var(--muted);font-size:.78rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 footer .mono-eyebrow{color:var(--muted)}
+footer .footer-credit{flex-basis:100%;text-align:center;font-size:.66rem;opacity:.65}
+footer .footer-credit a{color:var(--muted);text-decoration:underline}
 
 /* ---------- MY CALENDAR (profile page) ---------- */
 .cal-widget{margin-top:20px}
@@ -504,6 +512,16 @@ button.save-toggle.saved-active{background:var(--lime);color:var(--ink);border-c
 .flat-photo-preview[hidden]{display:none}
 .flat-photo-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:8px;background:rgba(0,0,0,.55);border:none;color:#fff;display:grid;place-items:center;cursor:pointer}
 .flat-photo-remove svg{width:13px;height:13px}
+.flat-photo-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.flat-photo-thumb{position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--line-2);flex-shrink:0}
+.flat-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.flat-photo-thumb button{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:6px;background:rgba(0,0,0,.6);border:none;color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+.flat-photo-thumb button svg{width:10px;height:10px}
+/* scrollable photo gallery — the room card's media area, and the View modal */
+.flat-gallery{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;width:100%;height:100%;scrollbar-width:none}
+.flat-gallery::-webkit-scrollbar{display:none}
+.flat-gallery img{flex:0 0 100%;width:100%;height:100%;object-fit:cover;scroll-snap-align:start}
+.flat-gallery-count{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;font-weight:700;padding:4px 9px;border-radius:20px;z-index:1;pointer-events:none}
 
 /* View listing modal */
 .flat-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:200;display:grid;place-items:center;padding:20px}
@@ -605,6 +623,7 @@ button.save-toggle.saved-active{background:var(--lime);color:var(--ink);border-c
 .land-hero{flex:1;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:40px 40px 60px;max-width:1300px;margin:0 auto;width:100%;position:relative}
 .hero-glow{position:absolute;top:-10%;left:-5%;width:500px;height:500px;background:radial-gradient(circle,color-mix(in srgb,var(--lime) 22%,transparent),transparent 65%);pointer-events:none;z-index:0}
 .hero-glow.two{left:auto;right:-5%;top:30%;background:radial-gradient(circle,color-mix(in srgb,var(--coral) 20%,transparent),transparent 65%)}
+.hero-dragon{position:absolute;right:-80px;bottom:-60px;width:620px;max-width:60vw;opacity:.14;z-index:0;pointer-events:none;user-select:none}
 .hero-left{position:relative;z-index:2}
 .hero-left .ey{color:var(--lime);margin-bottom:18px}
 .hero-left h1{font-family:'Archivo';font-weight:900;font-size:clamp(2.6rem,5.2vw,4.3rem);line-height:.98;letter-spacing:-.03em;margin-bottom:20px}
