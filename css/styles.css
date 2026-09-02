@@ -507,7 +507,7 @@ button.save-toggle.saved-active{background:var(--lime);color:var(--ink);border-c
 .price-input{display:flex;align-items:center;background:var(--ink-2);border:1px solid var(--line-2);border-radius:12px;padding:0 14px;transition:.16s}
 .price-input:focus-within{border-color:var(--lime)}
 .price-input span{color:var(--muted);font-weight:700}
-.price-input input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-family:'Archivo';font-size:.92rem;padding:12px 8px 12px 4px}
+.field .price-input input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-family:'Archivo';font-size:.92rem;padding:12px 8px 12px 4px}
 .flat-photo-input{display:flex;align-items:center;gap:10px}
 .flat-photo-preview{position:relative;margin-top:10px;width:100%;max-width:220px;border-radius:12px;overflow:hidden;border:1px solid var(--line-2)}
 .flat-photo-preview img{display:block;width:100%;height:140px;object-fit:cover}
