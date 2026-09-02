@@ -282,8 +282,11 @@ def soc_dir_row(name, category, color):
             '<div class="soc-row-ava" style="background:%s">%s</div>'
             '<div class="soc-row-body"><div class="soc-row-name">%s</div>'
             '<div class="soc-row-cat">%s</div></div>'
-            '<button class="soc-join" data-society="%s">Join</button></div>'
-            % (category, name.lower(), color, _initials(name), name, category, slug))
+            '<div class="soc-row-actions">'
+            '<button type="button" class="soc-view" data-society="%s" data-name="%s" data-cat="%s">View</button>'
+            '<button class="soc-join" data-society="%s">Join</button>'
+            '</div></div>'
+            % (category, name.lower(), color, _initials(name), name, category, slug, name, category, slug))
 
 def build_soc_directory():
     rows = []
@@ -731,14 +734,48 @@ def your_societies_widget():
     return ('<div class="widget"><div class="widget-head"><h3>Your Societies</h3></div>'
             '<div class="your-soc-list" id="yourSocList"></div></div>')
 
+# Real events that already exist on Events/BUCS which happen to be hosted by one of the real
+# societies below — surfaced again in that society's own "Upcoming events" list once you open
+# it, rather than inventing separate ones. Most societies don't have a matching event yet, so
+# they get an honest empty state pointing at the Events page instead.
+SOC_EVENTS = {
+    'Film Society': [{'title': 'Film Night: Cult Classics', 'date': 'Sun 12 Oct · 6pm', 'place': 'SU Cinema',
+                       'iso': '2026-10-12', 'time': '6:00pm', 'color': 'var(--coral)'}],
+    'Music Society': [{'title': 'Open Mic Night', 'date': 'Fri 3 Oct · 8pm', 'place': 'The Taf',
+                        'iso': '2026-10-03', 'time': '8:00pm', 'color': 'var(--coral)'}],
+    'Mountaineering Club': [{'title': 'Give It A Go: Bouldering', 'date': 'Sat 11 Oct · 2pm', 'place': 'Boulders CDF',
+                              'iso': '2026-10-11', 'time': '2:00pm', 'color': 'var(--lime)'}],
+}
+
 def build_societies():
     left = '<div class="feed-col">%s</div>' % build_soc_directory()
     right = '<aside class="side-col">%s</aside>' % your_societies_widget()
+    # One shared modal, filled in by JS for whichever society you click "View" on — same
+    # chat + upcoming-events layout the old featured pages had, now working for all 269.
+    soc_modal = ('<div class="flat-modal-overlay" id="socModalOverlay" hidden>'
+                '<div class="flat-modal soc-modal" id="socModal">'
+                '<button type="button" class="flat-modal-close" id="socModalClose" aria-label="Close">%s</button>'
+                '<div class="flat-modal-body">'
+                '<div class="soc-page-head">'
+                '<div class="soc-page-ava" id="socModalAva" style="background:var(--sky);font-size:1.3rem"></div>'
+                '<div><h3 id="socModalName" style="margin-bottom:4px"></h3>'
+                '<div class="sub" id="socModalCat"></div></div></div>'
+                '<button type="button" class="soc-join" id="socModalJoin" style="width:100%%;justify-content:center;margin-bottom:20px">Join</button>'
+                '<div class="widget-head"><h3>Society chat</h3></div>'
+                '<div class="soc-chat" id="socModalChat"></div>'
+                '<div class="soc-chat-input"><input type="text" id="socModalChatField" autocomplete="off" placeholder="Message the group…">'
+                '<button type="button" id="socModalChatSend">%s</button></div>'
+                '<div class="widget-head" style="margin-top:24px"><h3>Upcoming events</h3></div>'
+                '<div class="up" id="socModalEvents"></div>'
+                '</div></div></div>' % (ICONS['close'], ICONS['send']))
     body = ('<div class="content">'
             '<div class="page-head"><div class="ey mono-eyebrow">Find your people</div>'
             '<h1>Societies</h1>'
             '<div class="sub">The full, real Cardiff SU societies directory and every Athletic Union sports club — browsable and joinable in a tap. Head to the Students\' Union — the official place to join — for membership and the Guild of Societies.</div></div>'
-            '<div class="two-col">%s%s</div></div>' % (left, right))
+            '<div class="two-col">%s%s</div>'
+            '%s'
+            '<script>window.UV_SOC_EVENTS = %s;</script>'
+            '</div>' % (left, right, soc_modal, json.dumps(SOC_EVENTS)))
     return page('Societies', 'societies', body)
 
 # ================= PAGE: FLATMATES =================
