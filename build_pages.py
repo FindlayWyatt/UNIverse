@@ -3,8 +3,19 @@
 import os
 import json
 import re
+import hashlib
 
 OUT = os.path.dirname(os.path.abspath(__file__))
+
+# Cache-busting query string for the shared CSS/JS, so a browser that's already cached an old
+# css/styles.css or js/app.js (both served with no cache-control headers by the plain dev
+# server, so the browser is free to reuse a stale copy indefinitely) is forced to fetch the
+# latest one after every edit, instead of silently showing outdated styling/behaviour.
+with open(os.path.join(OUT, 'css', 'styles.css'), 'rb') as _f:
+    _css_bytes = _f.read()
+with open(os.path.join(OUT, 'js', 'app.js'), 'rb') as _f:
+    _js_bytes = _f.read()
+ASSET_VER = hashlib.md5(_css_bytes + _js_bytes).hexdigest()[:8]
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
@@ -449,11 +460,11 @@ def page(title, active, body, two_col_note='', chat=False, extra_head='', extra_
     doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
            '<title>%s · Uni-Verse Cardiff</title>%s%s'
-           '<link rel="stylesheet" href="css/styles.css"></head><body>'
+           '<link rel="stylesheet" href="css/styles.css?v=%s"></head><body>'
            '%s%s</div></div>%s%s'
-           '<script src="js/search-data.js"></script>'
-           '<script src="js/app.js"></script></body></html>'
-           % (title, FONTS, extra_head, shell_open, body, theme_switcher(), extra_scripts))
+           '<script src="js/search-data.js?v=%s"></script>'
+           '<script src="js/app.js?v=%s"></script></body></html>'
+           % (title, FONTS, extra_head, ASSET_VER, shell_open, body, theme_switcher(), extra_scripts, ASSET_VER, ASSET_VER))
     return doc
 
 # ---------------- shared content bits ----------------
@@ -1344,9 +1355,9 @@ def build_login():
     doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
            '<title>Log in · Uni-Verse Cardiff</title>%s'
-           '<link rel="stylesheet" href="css/styles.css"></head><body>'
-           '%s%s<script src="js/app.js"></script></body></html>'
-           % (FONTS, body, theme_switcher()))
+           '<link rel="stylesheet" href="css/styles.css?v=%s"></head><body>'
+           '%s%s<script src="js/app.js?v=%s"></script></body></html>'
+           % (FONTS, ASSET_VER, body, theme_switcher(), ASSET_VER))
     return doc
 
 # ================= PAGE: LANDING =================
@@ -1409,9 +1420,9 @@ def build_landing():
     doc = ('<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
            '<title>Uni-Verse Cardiff · Everything at Cardiff, in one place</title>%s'
-           '<link rel="stylesheet" href="css/styles.css"></head><body>'
-           '%s%s<script src="js/app.js"></script></body></html>'
-           % (FONTS, body, theme_switcher()))
+           '<link rel="stylesheet" href="css/styles.css?v=%s"></head><body>'
+           '%s%s<script src="js/app.js?v=%s"></script></body></html>'
+           % (FONTS, ASSET_VER, body, theme_switcher(), ASSET_VER))
     return doc
 
 # ---------------- write all ----------------
